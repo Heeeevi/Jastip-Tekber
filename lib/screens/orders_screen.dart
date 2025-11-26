@@ -3,7 +3,6 @@ import 'package:flutter_application_2/screens/favorites_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'order_detail_screen.dart';
-import 'package:flutter_application_2/screens/favorites_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
