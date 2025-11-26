@@ -4,6 +4,8 @@ import 'screens/login_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/orders_screen.dart';
+import 'screens/favorites_screen.dart';
+
 
 void main() {
   runApp(const JasTipApp());
@@ -55,6 +57,7 @@ class JasTipApp extends StatelessWidget {
         '/signup': (_) => const SignUpScreen(),
         '/home': (_) => const HomeScreen(),
         '/orders': (_) => const OrdersScreen(),
+        '/favorites': (_) => const FavoritesScreen(),
       },
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orders_screen.dart';
+import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -289,14 +290,33 @@ class _HomeScreenState extends State<HomeScreen> {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: (i) {
-        if (i == 1) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(pageBuilder: (_, __, ___) => const OrdersScreen(), transitionDuration: Duration.zero),
-          );
-        } else {
-          setState(() => currentIndex = i);
+        switch (i) {
+          case 0:
+            // already on Home
+            break;
+          case 1:
+            Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const OrdersScreen(),
+                transitionDuration: Duration.zero,
+              ),
+            );
+            break;
+          case 2:
+            Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const FavoritesScreen(),
+                transitionDuration: Duration.zero,
+              ),
+            );
+            break;
+          case 3:
+            // nanti kalau sudah ada chat screen
+            break;
         }
+        setState(() => currentIndex = i);
       },
       backgroundColor: const Color(0xFF14171D),
       type: BottomNavigationBarType.fixed,
