@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+
 import 'screens/login_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/orders_screen.dart';
+import 'screens/seller_dashboard_page.dart';
 import 'screens/favorites_screen.dart';
-
 
 void main() {
   runApp(const JasTipApp());
@@ -21,6 +23,7 @@ class JasTipApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = ThemeData.dark();
+    
     return MaterialApp(
       title: 'JasTip',
       debugShowCheckedModeBanner: false,
@@ -40,7 +43,10 @@ class JasTipApp extends StatelessWidget {
             borderSide: BorderSide.none,
           ),
         ),
-        textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(bodyColor: Colors.white, displayColor: Colors.white),
+        textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(
+          bodyColor: Colors.white, 
+          displayColor: Colors.white
+        ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: _primaryAccent,
@@ -51,12 +57,16 @@ class JasTipApp extends StatelessWidget {
           ),
         ),
       ),
+     
+      initialRoute: '/', 
       routes: {
-        '/': (_) => const LoginScreen(),
+       
+        '/': (_) => const LoginScreen(), 
         '/login': (_) => const LoginScreen(),
         '/signup': (_) => const SignUpScreen(),
         '/home': (_) => const HomeScreen(),
         '/orders': (_) => const OrdersScreen(),
+        '/seller-dashboard': (_) => const SellerDashboardPage(),
         '/favorites': (_) => const FavoritesScreen(),
       },
     );
