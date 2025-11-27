@@ -55,7 +55,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 6),
-              TextField(controller: emailPhoneCtrl),
+              TextField(
+                controller: emailPhoneCtrl,
+                style: const TextStyle(color: Colors.black),
+                cursorColor: Colors.black,
+              ),
               const SizedBox(height: 20),
               const Text(
                 'Password',
@@ -65,6 +69,8 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: passwordCtrl,
                 obscureText: obscure,
+                style: const TextStyle(color: Colors.black),
+                cursorColor: Colors.black,
                 decoration: InputDecoration(
                   suffixIcon: IconButton(
                     icon: Icon(

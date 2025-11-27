@@ -197,7 +197,52 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return SizedBox(
       height: 50,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: () {
+          // Validasi input
+          if (emailPhoneCtrl.text.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please enter your email or phone'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+          
+          if (fullNameCtrl.text.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please enter your full name'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+          
+          if (passwordCtrl.text.isEmpty || passwordCtrl.text.length < 6) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Password must be at least 6 characters'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          // Jika validasi sukses, tampilkan pesan dan navigasi ke home
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Welcome, ${fullNameCtrl.text}! Account created successfully.'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          
+          // Navigasi ke home setelah sign up sukses
+          Future.delayed(const Duration(seconds: 1), () {
+            Navigator.pushReplacementNamed(context, '/home');
+          });
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5F63FF),
           shape: RoundedRectangleBorder(
@@ -211,22 +256,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget _buildBottomText() {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.only(bottom: 8),
-        child: Text.rich(
-          TextSpan(
-            text: 'Have Account? ',
-            style: TextStyle(fontSize: 13, color: Colors.white70),
-            children: [
-              TextSpan(
-                text: 'Sign In',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+        padding: const EdgeInsets.only(bottom: 8),
+        child: GestureDetector(
+          onTap: () {
+            // Kembali ke halaman Sign In
+            Navigator.pushReplacementNamed(context, '/login');
+          },
+          child: const Text.rich(
+            TextSpan(
+              text: 'Have Account? ',
+              style: TextStyle(fontSize: 13, color: Colors.white70),
+              children: [
+                TextSpan(
+                  text: 'Sign In',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
