@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orders_screen.dart';
-import 'seller_dashboard_page.dart';
 import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -76,16 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _pill('Buyer', buyerMode, () => setState(() => buyerMode = true)),
+          _pill('Buyer', buyerMode, () {
+            // Sudah di Buyer mode, tidak perlu navigasi
+            setState(() => buyerMode = true);
+          }),
           const SizedBox(width: 4),
           _pill('Seller', !buyerMode, () {
-            setState(() => buyerMode = false);
-            // Navigasi ke Dashboard Seller
-            Navigator.pushNamed(context, '/seller-dashboard').then((_) {
-              // Reset kembali ke mode Buyer saat user menekan tombol back
-              // dari halaman Seller Dashboard
-              setState(() => buyerMode = true);
-            });
+            // Navigasi ke Dashboard Seller menggunakan pushReplacement
+            Navigator.pushReplacementNamed(context, '/seller-dashboard');
           }),
         ],
       ),
