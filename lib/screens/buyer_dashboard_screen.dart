@@ -238,7 +238,7 @@ class _BuyerDashboardScreenState extends State<BuyerDashboardScreen> {
 
     Widget _categoryRow() {
     final categories = [
-      {'name': 'Fast FOod', 'image': 'assets/images/fastfood.jpg'},
+      {'name': 'Fast Food', 'image': 'assets/images/fastfood.jpg'},
       {'name': 'Noodles', 'image': 'assets/images/noodles.jpg'},
       {'name': 'Desserts', 'image': 'assets/images/desserts.jpg'},
       {'name': 'Drinks', 'image': 'assets/images/drinks.jpg'},
