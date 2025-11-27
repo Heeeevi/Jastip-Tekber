@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_2/screens/favorites_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'order_detail_screen.dart';
@@ -50,6 +51,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
         // already here
         break;
       case 2:
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const FavoritesScreen(), transitionDuration: Duration.zero,
+        ),
+      );
+      break;
       case 3:
         // placeholders
         break;

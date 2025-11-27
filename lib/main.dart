@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// --- IMPORT SCREEN YANG SUDAH ADA ---
+// --- IMPORT SCREEN UMUM ---
 import 'screens/login_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/orders_screen.dart';
+
+// --- IMPORT DARI LOCAL (FITUR SELLER YANG ANDA BUAT) ---
 import 'screens/create_seller_profile_page.dart';
 import 'screens/seller_profile_page.dart';
-
-// --- 1. IMPORT SCREEN DASHBOARD SELLER BARU ---
 import 'screens/seller_dashboard_screen.dart';
+
+// --- IMPORT DARI REMOTE (FITUR BUYER DARI GITHUB) ---
+// Pastikan file-file ini ada di folder screens setelah pull
+import 'screens/buyer_dashboard_screen.dart';
+import 'screens/favorites_screen.dart';
+import 'screens/order_status_screen.dart';
+// import 'screens/seller_dashboard_page.dart'; // Kita gunakan seller_dashboard_screen.dart saja
 
 void main() {
   runApp(const JasTipApp());
@@ -26,6 +33,7 @@ class JasTipApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = ThemeData.dark();
+
     return MaterialApp(
       title: 'JasTip',
       debugShowCheckedModeBanner: false,
@@ -70,15 +78,22 @@ class JasTipApp extends StatelessWidget {
       initialRoute: '/',
 
       routes: {
-        // Rute lama
+        // --- RUTE UMUM ---
         '/': (_) => const LoginScreen(),
         '/login': (_) => const LoginScreen(),
         '/signup': (_) => const SignUpScreen(),
         '/home': (_) => const HomeScreen(),
         '/orders': (_) => const OrdersScreen(),
+
+        // --- RUTE SELLER (LOCAL) ---
         '/create-seller-profile': (_) => const CreateSellerProfilePage(),
         '/seller-profile': (_) => const SellerProfilePage(),
         '/seller-dashboard': (_) => const SellerDashboardScreen(),
+
+        // --- RUTE BUYER (REMOTE) ---
+        '/favorites': (_) => const FavoritesScreen(),
+        '/buyer-dashboard': (_) => const BuyerDashboardScreen(),
+        '/order-status': (context) => const OrderStatusScreen(),
       },
     );
   }

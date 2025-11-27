@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orders_screen.dart';
+import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -182,10 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () {
-                  // Karena GestureDetector membungkus seluruh kartu, tombol ini
-                  // secara visual ada tapi tap akan ditangkap juga untuk navigasi
-                  // (kecuali handle khusus diberikan).
-                  // Untuk UX terbaik, bisa juga navigasi ditaruh di sini secara eksplisit.
+                  // Navigasi ke profil seller
                   Navigator.pushNamed(context, '/seller-profile');
                 },
                 style: OutlinedButton.styleFrom(
@@ -376,16 +374,36 @@ class _HomeScreenState extends State<HomeScreen> {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: (i) {
-        if (i == 1) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const OrdersScreen(),
-              transitionDuration: Duration.zero,
-            ),
-          );
-        } else {
-          setState(() => currentIndex = i);
+        // --- LOGIKA NAVIGASI YANG DIGABUNGKAN ---
+        switch (i) {
+          case 0:
+            // Sudah di Home
+            setState(() => currentIndex = i);
+            break;
+          case 1:
+            // Ke Orders Screen
+            Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const OrdersScreen(),
+                transitionDuration: Duration.zero,
+              ),
+            );
+            break;
+          case 2:
+            // Ke Favorites Screen (Fitur dari Remote)
+            Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const FavoritesScreen(),
+                transitionDuration: Duration.zero,
+              ),
+            );
+            break;
+          case 3:
+            // Placeholder Chat
+            setState(() => currentIndex = i);
+            break;
         }
       },
       backgroundColor: const Color(0xFF14171D),
