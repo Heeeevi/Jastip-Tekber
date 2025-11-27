@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // --- IMPORT SCREEN UMUM ---
 import 'screens/login_screen.dart';
@@ -12,13 +13,23 @@ import 'screens/create_seller_profile_page.dart';
 import 'screens/seller_profile_page.dart';
 import 'screens/seller_dashboard_screen.dart';
 
-
 // --- IMPORT DARI REMOTE (FITUR BUYER DARI GITHUB) ---
 // Pastikan file-file ini ada di folder screens setelah pull
 import 'screens/favorites_screen.dart';
-import 'screens/order_status_screen.dart';
 
-void main() {
+// Global Supabase client getter
+final supabase = Supabase.instance.client;
+
+void main() async {
+  // Ensure Flutter bindings are initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: 'https://lhnjwhnvawqzmoqwcadx.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxobmp3aG52YXdxem1vcXdjYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjE2NTcsImV4cCI6MjA3OTczNzY1N30.q3BAMawFbMUe-v1tM_ZcZaZCmC2-jnNitS0q2JSnZeU',
+  );
+
   runApp(const JasTipApp());
 }
 
@@ -76,22 +87,37 @@ class JasTipApp extends StatelessWidget {
 
       initialRoute: '/',
 
-      routes: {
-        // --- RUTE UMUM ---
-        '/': (_) => const LoginScreen(),
-        '/login': (_) => const LoginScreen(),
-        '/signup': (_) => const SignUpScreen(),
-        '/home': (_) => const HomeScreen(),
-        '/orders': (_) => const OrdersScreen(),
+      onGenerateRoute: (settings) {
+        // Handle routes dengan parameter
+        if (settings.name == '/create-seller-profile') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          final isSeller = args?['isSeller'] ?? false;
+          return MaterialPageRoute(
+            builder: (_) => CreateSellerProfilePage(isSeller: isSeller),
+          );
+        }
 
-        // --- RUTE SELLER (LOCAL) ---
-        '/create-seller-profile': (_) => const CreateSellerProfilePage(),
-        '/seller-profile': (_) => const SellerProfilePage(),
-        '/seller-dashboard': (_) => const SellerDashboardScreen(),
+        // Routes biasa tanpa parameter
+        final routes = <String, WidgetBuilder>{
+          '/': (_) => const LoginScreen(),
+          '/login': (_) => const LoginScreen(),
+          '/signup': (_) => const SignUpScreen(),
+          '/home': (_) => const HomeScreen(),
+          '/orders': (_) => const OrdersScreen(),
+          '/seller-profile': (_) => const SellerProfilePage(),
+          '/seller-dashboard': (_) => const SellerDashboardScreen(),
+          '/favorites': (_) => const FavoritesScreen(),
+        };
 
-        // --- RUTE BUYER (REMOTE) ---
-        '/favorites': (_) => const FavoritesScreen(),
-        '/order-status': (context) => const OrderStatusScreen(),
+        final builder = routes[settings.name];
+        if (builder != null) {
+          return MaterialPageRoute(builder: builder);
+        }
+
+        // Route not found
+        return MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        );
       },
     );
   }

@@ -36,8 +36,12 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
         leading: IconButton(
           icon: const Icon(Icons.person_outline, color: kTextWhite),
           onPressed: () {
-            // Navigasi ke halaman Edit/Create Profil Seller
-            Navigator.pushNamed(context, '/create-seller-profile');
+            // Navigasi ke halaman Edit Profile Seller (dengan parameter isSeller: true)
+            Navigator.pushNamed(
+              context,
+              '/create-seller-profile',
+              arguments: {'isSeller': true},
+            );
           },
         ),
         title: Text(
@@ -181,12 +185,34 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
         ),
       ),
 
-      // Bottom Nav Bar Placeholder (Visual Only)
+      // Bottom Nav Bar dengan Navigasi
       bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0, // Seller Dashboard = Home untuk Seller
         backgroundColor: kBgDark,
         selectedItemColor: kPrimaryAccent,
         unselectedItemColor: kTextGrey,
         type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              // Sudah di Seller Dashboard (Home untuk Seller)
+              break;
+            case 1:
+              // Ke Orders Screen
+              Navigator.pushReplacementNamed(context, '/orders');
+              break;
+            case 2:
+              // Ke Favorites Screen
+              Navigator.pushReplacementNamed(context, '/favorites');
+              break;
+            case 3:
+              // Placeholder Chat (belum ada screen)
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Chat feature coming soon!')),
+              );
+              break;
+          }
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
           BottomNavigationBarItem(
@@ -232,25 +258,31 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildToggleButton("Buyer", false),
-          _buildToggleButton("Seller", true),
+          _buildToggleButton("Buyer", false, () {
+            // Navigasi kembali ke Home (Buyer Mode)
+            Navigator.pushReplacementNamed(context, '/home');
+          }),
+          _buildToggleButton("Seller", true, null),
         ],
       ),
     );
   }
 
-  Widget _buildToggleButton(String text, bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive ? kPrimaryAccent : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: GoogleFonts.inter(
-          color: Colors.white,
-          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+  Widget _buildToggleButton(String text, bool isActive, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? kPrimaryAccent : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     );

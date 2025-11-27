@@ -8,26 +8,32 @@ const Color kTextColorPrimary = Colors.white;
 const Color kTextColorSecondary = Colors.grey;
 
 class CreateSellerProfilePage extends StatefulWidget {
-  const CreateSellerProfilePage({super.key});
+  // Parameter untuk menentukan apakah user adalah seller atau buyer
+  final bool isSeller;
+  
+  const CreateSellerProfilePage({super.key, this.isSeller = false});
 
   @override
   State<CreateSellerProfilePage> createState() =>
       _CreateSellerProfilePageState();
 }
 
-// PERBAIKAN: Menggunakan kata kunci 'extends', bukan '>'
 class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _deliveryTimeController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _blockController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
     _bioController.dispose();
     _deliveryTimeController.dispose();
+    _phoneController.dispose();
+    _blockController.dispose();
     super.dispose();
   }
 
@@ -38,9 +44,9 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
       appBar: AppBar(
         backgroundColor: kBackgroundColor,
         elevation: 0,
-        title: const Text(
-          'Create Seller Profile',
-          style: TextStyle(color: kTextColorPrimary),
+        title: Text(
+          widget.isSeller ? 'Edit Seller Profile' : 'Edit Profile',
+          style: const TextStyle(color: kTextColorPrimary),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: kTextColorPrimary),
@@ -134,24 +140,57 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
                 _buildDarkTextField(
                   controller: _bioController,
                   label: 'Bio / Description',
-                  hint: 'What kind of jastip do you offer?',
+                  hint: widget.isSeller 
+                      ? 'What kind of jastip do you offer?' 
+                      : 'Tell us about yourself',
                   icon: Icons.info_outline,
                   maxLines: 3,
                 ),
                 const SizedBox(height: 20),
 
                 _buildDarkTextField(
-                  controller: _deliveryTimeController,
-                  label: 'Typical Delivery Time',
-                  hint: 'e.g., 20-30min',
-                  icon: Icons.timer_outlined,
+                  controller: _phoneController,
+                  label: 'Phone Number',
+                  hint: 'e.g., 081234567890',
+                  icon: Icons.phone_outlined,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter delivery estimate';
+                      return 'Please enter your phone number';
                     }
                     return null;
                   },
                 ),
+                const SizedBox(height: 20),
+
+                _buildDarkTextField(
+                  controller: _blockController,
+                  label: 'Block / Dorm',
+                  hint: 'e.g., Block A',
+                  icon: Icons.home_outlined,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your block/dorm';
+                    }
+                    return null;
+                  },
+                ),
+
+                // Tampilkan field delivery time hanya untuk seller
+                if (widget.isSeller) ...[
+                  const SizedBox(height: 20),
+                  _buildDarkTextField(
+                    controller: _deliveryTimeController,
+                    label: 'Typical Delivery Time',
+                    hint: 'e.g., 20-30min',
+                    icon: Icons.timer_outlined,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter delivery estimate';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
 
                 const SizedBox(height: 50),
 
@@ -169,9 +208,9 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
                       shadowColor: kAccentColor.withOpacity(0.4),
                     ),
                     onPressed: _submitProfile,
-                    child: const Text(
-                      'Create Profile',
-                      style: TextStyle(
+                    child: Text(
+                      widget.isSeller ? 'Save Seller Profile' : 'Save Profile',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -191,16 +230,29 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
   void _submitProfile() {
     if (_formKey.currentState!.validate()) {
       final name = _nameController.text;
-      final deliveryTime = _deliveryTimeController.text;
+      final phone = _phoneController.text;
+      final block = _blockController.text;
+
+      String message;
+      if (widget.isSeller) {
+        final deliveryTime = _deliveryTimeController.text;
+        message = 'Seller profile saved! Name: $name, Block: $block, Delivery: $deliveryTime';
+      } else {
+        message = 'Profile saved! Name: $name, Phone: $phone, Block: $block';
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: kAccentColor,
-          content: Text(
-            'Creating profile for $name with delivery time: $deliveryTime...',
-          ),
+          backgroundColor: Colors.green,
+          content: Text(message),
+          duration: const Duration(seconds: 2),
         ),
       );
+
+      // Kembali ke halaman sebelumnya setelah 1 detik
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.of(context).pop();
+      });
     }
   }
 

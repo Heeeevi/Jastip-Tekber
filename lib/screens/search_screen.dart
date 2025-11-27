@@ -60,34 +60,103 @@ class _SearchScreenState extends State<SearchScreen> {
         search(text);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Text(text, style: const TextStyle(fontSize: 15)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF5F63D9),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(text, style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500)),
       ),
     );
   }
 
   Widget _buildResultCard(Map item) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: Colors.grey.shade800),
       ),
+      clipBehavior: Clip.hardEdge,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(item["name"], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text("Delivery: ${item['delivery']}", style: TextStyle(color: Colors.grey.shade700)),
-          Row(
+          // Image with status badge
+          Stack(
             children: [
-              Text("${item['rating']} | ${item['category']}"),
-              const SizedBox(width: 8),
-              if (item["isOnline"]) Text("Online", style: const TextStyle(color: Colors.green)),
+              Container(
+                height: 160,
+                width: double.infinity,
+                color: Colors.grey.shade800,
+                child: Image.asset(
+                  item['image'] ?? 'assets/images/placeholder.jpeg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Container(color: Colors.grey.shade800),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5F63D9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    item["closing"] ?? "Closes in 45 min",
+                    style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              if (item["isOnline"] == true)
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "Online",
+                      style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ),
             ],
           ),
-          Text(item["closing"], style: TextStyle(color: Colors.red.shade400)),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item["name"] ?? "Restaurant",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 16, color: Colors.amber),
+                    const SizedBox(width: 4),
+                    Text(
+                      "${item['rating'] ?? 4.8} | ${item['category'] ?? 'Food'}",
+                      style: const TextStyle(fontSize: 14, color: Colors.white70),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Delivery: ${item['delivery'] ?? '6:00 - 7:00 PM'}",
+                  style: const TextStyle(fontSize: 13, color: Colors.white54),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -133,7 +202,11 @@ class _SearchScreenState extends State<SearchScreen> {
             // History Section
             const Text("Riwayat pencarian", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            ...history.map((h) => _buildHistoryItem(h)).toList(),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: history.map((h) => _buildHistoryItem(h)).toList(),
+            ),
 
             const SizedBox(height: 20),
             Text("Hasil pencarian ${filteredResults.length}",
@@ -150,16 +223,27 @@ class _SearchScreenState extends State<SearchScreen> {
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Colors.grey)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Icon(Icons.home, size: 28),
-            Icon(Icons.receipt, size: 28),
-            Icon(Icons.favorite, size: 28),
-            Icon(Icons.chat, size: 28),
+            _buildNavItem(Icons.home, "Home"),
+            _buildNavItem(Icons.receipt_long, "Orders"),
+            _buildNavItem(Icons.favorite_border, "Favorites"),
+            _buildNavItem(Icons.chat_bubble_outline, "Chat"),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 28, color: const Color(0xFF5F63D9)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF5F63D9), fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }
