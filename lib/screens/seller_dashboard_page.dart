@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'buyer_dashboard_screen.dart';
+import 'add_item_screen.dart';
 
 class SellerDashboardPage extends StatefulWidget {
   const SellerDashboardPage({super.key});
@@ -78,14 +79,23 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
                   "Menu Management",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5A6BF2),
-                    borderRadius: BorderRadius.circular(8),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AddItemPage()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5A6BF2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text("Add Item", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                  child: const Text("Add Item", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 )
+
               ],
             ),
             const SizedBox(height: 16),
