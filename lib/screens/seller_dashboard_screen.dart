@@ -36,8 +36,12 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
         leading: IconButton(
           icon: const Icon(Icons.person_outline, color: kTextWhite),
           onPressed: () {
-            // Navigasi ke halaman Edit/Create Profil Seller
-            Navigator.pushNamed(context, '/create-seller-profile');
+            // Navigasi ke halaman Edit Profile Seller (dengan parameter isSeller: true)
+            Navigator.pushNamed(
+              context,
+              '/create-seller-profile',
+              arguments: {'isSeller': true},
+            );
           },
         ),
         title: Text(

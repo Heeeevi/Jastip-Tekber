@@ -27,10 +27,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: Colors.grey.shade700,
-          child: const Icon(Icons.person, color: Colors.white),
+        GestureDetector(
+          onTap: () {
+            // Navigasi ke halaman Edit Profile (Buyer mode)
+            Navigator.pushNamed(
+              context,
+              '/create-seller-profile',
+              arguments: {'isSeller': false},
+            );
+          },
+          child: CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.grey.shade700,
+            child: const Icon(Icons.person, color: Colors.white),
+          ),
         ),
         const SizedBox(width: 12),
         Text(
