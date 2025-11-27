@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orders_screen.dart';
 import 'favorites_screen.dart';
+import 'menu_chat.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -313,7 +314,13 @@ class _HomeScreenState extends State<HomeScreen> {
             );
             break;
           case 3:
-            // nanti kalau sudah ada chat screen
+            Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const ChatScreen(),
+                transitionDuration: Duration.zero,
+              ),
+            );
             break;
         }
         setState(() => currentIndex = i);
