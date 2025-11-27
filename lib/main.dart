@@ -16,7 +16,7 @@ import 'screens/seller_dashboard_screen.dart';
 // --- IMPORT DARI REMOTE (FITUR BUYER DARI GITHUB) ---
 // Pastikan file-file ini ada di folder screens setelah pull
 import 'screens/favorites_screen.dart';
-import 'screens/order_status_screen.dart';
+
 
 void main() {
   runApp(const JasTipApp());
@@ -91,7 +91,6 @@ class JasTipApp extends StatelessWidget {
 
         // --- RUTE BUYER (REMOTE) ---
         '/favorites': (_) => const FavoritesScreen(),
-        '/order-status': (context) => const OrderStatusScreen(),
       },
     );
   }
