@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/supabase_service.dart';
 
 // --- KONSTANTA WARNA ---
 const Color kBackgroundColor = Color(0xFF19222C);
@@ -10,7 +11,7 @@ const Color kTextColorSecondary = Colors.grey;
 class CreateSellerProfilePage extends StatefulWidget {
   // Parameter untuk menentukan apakah user adalah seller atau buyer
   final bool isSeller;
-  
+
   const CreateSellerProfilePage({super.key, this.isSeller = false});
 
   @override
@@ -20,6 +21,7 @@ class CreateSellerProfilePage extends StatefulWidget {
 
 class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
   final _formKey = GlobalKey<FormState>();
+  final SupabaseService _supabaseService = SupabaseService();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
@@ -140,8 +142,8 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
                 _buildDarkTextField(
                   controller: _bioController,
                   label: 'Bio / Description',
-                  hint: widget.isSeller 
-                      ? 'What kind of jastip do you offer?' 
+                  hint: widget.isSeller
+                      ? 'What kind of jastip do you offer?'
                       : 'Tell us about yourself',
                   icon: Icons.info_outline,
                   maxLines: 3,
@@ -191,7 +193,6 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
                     },
                   ),
                 ],
-
                 const SizedBox(height: 50),
 
                 // --- BAGIAN 3: TOMBOL SUBMIT ---
@@ -218,6 +219,30 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // --- BAGIAN 4: TOMBOL LOGOUT ---
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.redAccent, width: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    onPressed: _handleLogout,
+                    child: const Text(
+                      'Logout',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 30),
               ],
             ),
@@ -236,7 +261,8 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
       String message;
       if (widget.isSeller) {
         final deliveryTime = _deliveryTimeController.text;
-        message = 'Seller profile saved! Name: $name, Block: $block, Delivery: $deliveryTime';
+        message =
+            'Seller profile saved! Name: $name, Block: $block, Delivery: $deliveryTime';
       } else {
         message = 'Profile saved! Name: $name, Phone: $phone, Block: $block';
       }
@@ -253,6 +279,58 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
       Future.delayed(const Duration(seconds: 1), () {
         Navigator.of(context).pop();
       });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _supabaseService.signOut();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Logged out successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Navigate to login after logout
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/login');
+            }
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logout failed: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
