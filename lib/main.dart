@@ -7,6 +7,7 @@ import 'screens/login_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/orders_screen.dart';
+import 'screens/add_item_screen.dart';
 
 // --- IMPORT DARI LOCAL (FITUR SELLER YANG ANDA BUAT) ---
 import 'screens/create_seller_profile_page.dart';
@@ -104,6 +105,7 @@ class JasTipApp extends StatelessWidget {
           '/signup': (_) => const SignUpScreen(),
           '/home': (_) => const HomeScreen(),
           '/orders': (_) => const OrdersScreen(),
+          '/add-item': (_) => const AddItemPage(),
           '/seller-profile': (_) => const SellerProfilePage(),
           '/seller-dashboard': (_) => const SellerDashboardScreen(),
           '/favorites': (_) => const FavoritesScreen(),
