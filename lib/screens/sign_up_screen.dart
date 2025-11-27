@@ -1,6 +1,7 @@
 // sign_up_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/supabase_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,8 +14,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController emailPhoneCtrl = TextEditingController();
   final TextEditingController fullNameCtrl = TextEditingController();
   final TextEditingController passwordCtrl = TextEditingController();
+  final SupabaseService _supabaseService = SupabaseService();
 
   bool obscure = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -194,54 +197,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return SizedBox(
       height: 50,
       child: ElevatedButton(
-        onPressed: () {
-          // Validasi input
-          if (emailPhoneCtrl.text.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enter your email or phone'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-
-          if (fullNameCtrl.text.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enter your full name'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-
-          if (passwordCtrl.text.isEmpty || passwordCtrl.text.length < 6) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Password must be at least 6 characters'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-
-          // Jika validasi sukses, tampilkan pesan dan navigasi ke home
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Welcome, ${fullNameCtrl.text}! Account created successfully.',
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-
-          // Navigasi ke home setelah sign up sukses
-          Future.delayed(const Duration(seconds: 1), () {
-            Navigator.pushReplacementNamed(context, '/home');
-          });
-        },
+        onPressed: _isLoading ? null : _handleSignUp,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5F63FF),
           shape: RoundedRectangleBorder(
@@ -249,7 +205,78 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
-        child: const Text('Sign Up'),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text('Sign Up'),
+      ),
+    );
+  }
+
+  Future<void> _handleSignUp() async {
+    // Validasi input
+    if (emailPhoneCtrl.text.isEmpty) {
+      _showSnackBar('Please enter your email or phone', Colors.red);
+      return;
+    }
+
+    if (fullNameCtrl.text.isEmpty) {
+      _showSnackBar('Please enter your full name', Colors.red);
+      return;
+    }
+
+    if (passwordCtrl.text.isEmpty || passwordCtrl.text.length < 6) {
+      _showSnackBar('Password must be at least 6 characters', Colors.red);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Sign up dengan Supabase
+      final response = await _supabaseService.signUp(
+        email: emailPhoneCtrl.text.trim(),
+        password: passwordCtrl.text,
+        fullName: fullNameCtrl.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (response.user != null) {
+        _showSnackBar(
+          'Account created successfully! Please login with your credentials.',
+          Colors.green,
+        );
+
+        // Navigasi ke login setelah sign up sukses
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/login');
+          }
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('Sign up failed: ${e.toString()}', Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, Color backgroundColor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 3),
       ),
     );
   }

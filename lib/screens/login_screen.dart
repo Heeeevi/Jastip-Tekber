@@ -13,6 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailPhoneCtrl = TextEditingController();
   final TextEditingController passwordCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final SupabaseService _supabaseService = SupabaseService();
   bool obscure = true;
   bool _isLoading = false;
 
@@ -29,28 +30,51 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await SupabaseService().signIn(
+      final response = await _supabaseService.signIn(
         email: emailPhoneCtrl.text.trim(),
         password: passwordCtrl.text,
       );
 
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+      if (response.user != null && mounted) {
+        _showSnackBar('Login successful!', Colors.green);
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        String errorMessage = 'Login failed';
+
+        // Parse error message untuk user experience yang lebih baik
+        if (e.toString().contains('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password';
+        } else if (e.toString().contains('Email not confirmed')) {
+          errorMessage = 'Please confirm your email first';
+        } else if (e.toString().contains('user_not_found')) {
+          errorMessage = 'User not found. Please sign up first';
+        } else {
+          errorMessage = 'Login failed: ${e.toString()}';
+        }
+
+        _showSnackBar(errorMessage, Colors.red);
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showSnackBar(String message, Color backgroundColor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   Widget _header() {
@@ -90,7 +114,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const Text(
                       'Email',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     TextFormField(
@@ -111,7 +138,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
                     const Text(
                       'Password',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     TextFormField(

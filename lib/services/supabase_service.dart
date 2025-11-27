@@ -4,18 +4,36 @@ class SupabaseService {
   final supabase = Supabase.instance.client;
 
   // ==================== AUTH ====================
-  
+
   /// Sign up new user
   Future<AuthResponse> signUp({
     required String email,
     required String password,
     String? fullName,
   }) async {
-    return await supabase.auth.signUp(
+    final response = await supabase.auth.signUp(
       email: email,
       password: password,
       data: {'full_name': fullName},
     );
+
+    // Create user profile in 'users' table after successful signup
+    if (response.user != null) {
+      try {
+        await supabase.from('users').insert({
+          'id': response.user!.id,
+          'email': email,
+          'full_name': fullName ?? '',
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (e) {
+        // If insert fails (e.g., user already exists), continue anyway
+        print('Error creating user profile: $e');
+      }
+    }
+
+    return response;
   }
 
   /// Sign in user
@@ -45,7 +63,7 @@ class SupabaseService {
   }
 
   // ==================== USERS ====================
-  
+
   /// Get user profile
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     final data = await supabase
@@ -77,15 +95,13 @@ class SupabaseService {
   }
 
   // ==================== SELLERS ====================
-  
+
   /// Fetch all sellers (untuk Popular Sellers)
   Future<List<Map<String, dynamic>>> fetchSellers({
     int limit = 10,
     bool? isOnline,
   }) async {
-    var query = supabase
-        .from('sellers')
-        .select('''
+    var query = supabase.from('sellers').select('''
           *,
           profiles!inner(full_name, avatar_url, dom_block)
         ''');
@@ -94,7 +110,9 @@ class SupabaseService {
       query = query.eq('is_online', isOnline);
     }
 
-    final data = await query.order('total_orders', ascending: false).limit(limit);
+    final data = await query
+        .order('total_orders', ascending: false)
+        .limit(limit);
     return List<Map<String, dynamic>>.from(data);
   }
 
@@ -116,16 +134,20 @@ class SupabaseService {
     String? description,
     String? deliveryTime,
   }) async {
-    final data = await supabase.from('sellers').insert({
-      'id': userId, // sellers.id references profiles.id
-      'display_name': displayName,
-      'block': block,
-      'description': description,
-      'delivery_time': deliveryTime,
-      'is_online': true,
-      'rating': 0.0,
-      'total_orders': 0,
-    }).select().single();
+    final data = await supabase
+        .from('sellers')
+        .insert({
+          'id': userId, // sellers.id references profiles.id
+          'display_name': displayName,
+          'block': block,
+          'description': description,
+          'delivery_time': deliveryTime,
+          'is_online': true,
+          'rating': 0.0,
+          'total_orders': 0,
+        })
+        .select()
+        .single();
 
     return data;
   }
@@ -159,7 +181,7 @@ class SupabaseService {
   }
 
   // ==================== ORDERS ====================
-  
+
   /// Fetch active orders (untuk Active Purchase Orders)
   Future<List<Map<String, dynamic>>> fetchActiveOrders() async {
     final userId = supabase.auth.currentUser?.id;
@@ -204,21 +226,25 @@ class SupabaseService {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
-    final data = await supabase.from('orders').insert({
-      'buyer_id': userId,
-      'seller_id': sellerId,
-      'total_price': totalPrice,
-      'delivery_fee': deliveryFee ?? 0,
-      'status': 'pending',
-      'delivery_address': deliveryAddress,
-      'notes': notes,
-    }).select().single();
+    final data = await supabase
+        .from('orders')
+        .insert({
+          'buyer_id': userId,
+          'seller_id': sellerId,
+          'total_price': totalPrice,
+          'delivery_fee': deliveryFee ?? 0,
+          'status': 'pending',
+          'delivery_address': deliveryAddress,
+          'notes': notes,
+        })
+        .select()
+        .single();
 
     return data;
   }
 
   // ==================== FAVORITES ====================
-  
+
   /// Check if seller is favorited
   Future<bool> isFavorited(String sellerId) async {
     final userId = supabase.auth.currentUser?.id;
@@ -270,7 +296,7 @@ class SupabaseService {
   }
 
   // ==================== NOTIFICATIONS ====================
-  
+
   /// Fetch unread notifications
   Future<List<Map<String, dynamic>>> fetchUnreadNotifications() async {
     final userId = supabase.auth.currentUser?.id;
@@ -302,9 +328,10 @@ class SupabaseService {
 
   /// Mark notification as read
   Future<void> markNotificationAsRead(String notificationId) async {
-    await supabase.from('notifications').update({
-      'is_read': true,
-    }).eq('id', notificationId);
+    await supabase
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('id', notificationId);
   }
 
   /// Mark all notifications as read
@@ -312,15 +339,19 @@ class SupabaseService {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
 
-    await supabase.from('notifications').update({
-      'is_read': true,
-    }).eq('user_id', userId).eq('is_read', false);
+    await supabase
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('user_id', userId)
+        .eq('is_read', false);
   }
 
   // ==================== PRODUCTS ====================
-  
+
   /// Get products by seller
-  Future<List<Map<String, dynamic>>> getProductsBySeller(String sellerId) async {
+  Future<List<Map<String, dynamic>>> getProductsBySeller(
+    String sellerId,
+  ) async {
     final data = await supabase
         .from('products')
         .select()
@@ -341,17 +372,21 @@ class SupabaseService {
     String? imageUrl,
     String? keywords,
   }) async {
-    final data = await supabase.from('products').insert({
-      'seller_id': sellerId,
-      'name': name,
-      'price': price,
-      'description': description,
-      'category': category,
-      'image_url': imageUrl,
-      'keywords': keywords,
-      'is_available': true,
-      'status': 'active',
-    }).select().single();
+    final data = await supabase
+        .from('products')
+        .insert({
+          'seller_id': sellerId,
+          'name': name,
+          'price': price,
+          'description': description,
+          'category': category,
+          'image_url': imageUrl,
+          'keywords': keywords,
+          'is_available': true,
+          'status': 'active',
+        })
+        .select()
+        .single();
 
     return data;
   }
@@ -384,7 +419,7 @@ class SupabaseService {
   }
 
   // ==================== CHAT / MESSAGES ====================
-  
+
   /// Send a message
   Future<Map<String, dynamic>> sendMessage({
     required String recipientId,
@@ -409,42 +444,58 @@ class SupabaseService {
       }
     }
 
-    final data = await supabase.from('messages').insert({
-      'sender_id': userId,
-      'recipient_id': recipientId,
-      'content': content,
-      'conversation_id': int.parse(finalConversationId),
-      'message_type': messageType ?? 'text',
-      'order_id': orderId,
-      'image_url': imageUrl,
-      'is_read': false,
-    }).select().single();
+    final data = await supabase
+        .from('messages')
+        .insert({
+          'sender_id': userId,
+          'recipient_id': recipientId,
+          'content': content,
+          'conversation_id': int.parse(finalConversationId),
+          'message_type': messageType ?? 'text',
+          'order_id': orderId,
+          'image_url': imageUrl,
+          'is_read': false,
+        })
+        .select()
+        .single();
 
     // Update conversation last_message
-    await supabase.from('conversations').update({
-      'last_message': content,
-      'last_message_at': DateTime.now().toIso8601String(),
-    }).eq('id', int.parse(finalConversationId));
+    await supabase
+        .from('conversations')
+        .update({
+          'last_message': content,
+          'last_message_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', int.parse(finalConversationId));
 
     return data;
   }
 
   /// Find existing conversation between two users
-  Future<Map<String, dynamic>?> _findConversation(String userId1, String userId2) async {
+  Future<Map<String, dynamic>?> _findConversation(
+    String userId1,
+    String userId2,
+  ) async {
     final data = await supabase
         .from('conversations')
         .select()
-        .or('and(participant_1_id.eq.$userId1,participant_2_id.eq.$userId2),and(participant_1_id.eq.$userId2,participant_2_id.eq.$userId1)')
+        .or(
+          'and(participant_1_id.eq.$userId1,participant_2_id.eq.$userId2),and(participant_1_id.eq.$userId2,participant_2_id.eq.$userId1)',
+        )
         .maybeSingle();
     return data;
   }
 
   /// Create new conversation
-  Future<Map<String, dynamic>> _createConversation(String userId1, String userId2) async {
-    final data = await supabase.from('conversations').insert({
-      'participant_1_id': userId1,
-      'participant_2_id': userId2,
-    }).select().single();
+  Future<Map<String, dynamic>> _createConversation(
+    String userId1,
+    String userId2,
+  ) async {
+    final data = await supabase
+        .from('conversations')
+        .insert({'participant_1_id': userId1, 'participant_2_id': userId2})
+        .select()
+        .single();
     return data;
   }
 
@@ -524,7 +575,9 @@ class SupabaseService {
   }
 
   /// Stream typing indicators
-  Stream<List<Map<String, dynamic>>> typingIndicatorsStream(int conversationId) {
+  Stream<List<Map<String, dynamic>>> typingIndicatorsStream(
+    int conversationId,
+  ) {
     return supabase
         .from('typing_indicators')
         .stream(primaryKey: ['id'])

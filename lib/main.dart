@@ -28,7 +28,8 @@ void main() async {
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://lhnjwhnvawqzmoqwcadx.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxobmp3aG52YXdxem1vcXdjYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjE2NTcsImV4cCI6MjA3OTczNzY1N30.q3BAMawFbMUe-v1tM_ZcZaZCmC2-jnNitS0q2JSnZeU',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxobmp3aG52YXdxem1vcXdjYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjE2NTcsImV4cCI6MjA3OTczNzY1N30.q3BAMawFbMUe-v1tM_ZcZaZCmC2-jnNitS0q2JSnZeU',
   );
 
   runApp(const JasTipApp());
@@ -117,9 +118,7 @@ class JasTipApp extends StatelessWidget {
         }
 
         // Route not found
-        return MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const LoginScreen());
       },
     );
   }
