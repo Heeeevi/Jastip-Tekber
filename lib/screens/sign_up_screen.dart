@@ -1,5 +1,6 @@
 // sign_up_screen.dart
 import 'package:flutter/material.dart';
+import '../services/supabase_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,8 +13,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController emailPhoneCtrl = TextEditingController();
   final TextEditingController fullNameCtrl = TextEditingController();
   final TextEditingController passwordCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   bool obscure = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -59,28 +62,46 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   horizontal: 24,
                   vertical: 32,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildTextField(
-                      label: 'Email or Mobile Phone',
-                      hint: 'Budi123@mail.com',
-                      controller: emailPhoneCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 18),
-                    _buildTextField(
-                      label: 'Full Name',
-                      hint: 'Budi susila',
-                      controller: fullNameCtrl,
-                    ),
-                    const SizedBox(height: 18),
-                    _buildPasswordField(),
-                    const SizedBox(height: 28),
-                    _buildSignUpButton(),
-                    const SizedBox(height: 32),
-                    _buildBottomText(),
-                  ],
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildTextField(
+                        label: 'Email',
+                        hint: 'Budi123@mail.com',
+                        controller: emailPhoneCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          if (!value.contains('@')) {
+                            return 'Please enter a valid email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _buildTextField(
+                        label: 'Full Name',
+                        hint: 'Budi susila',
+                        controller: fullNameCtrl,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your full name';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _buildPasswordField(),
+                      const SizedBox(height: 28),
+                      _buildSignUpButton(),
+                      const SizedBox(height: 32),
+                      _buildBottomText(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -95,6 +116,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     required String hint,
     required TextEditingController controller,
     TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,20 +124,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Text(label, style: const TextStyle(fontSize: 13, color: Colors.white)),
         const SizedBox(height: 6),
 
-        // >>> INI YANG PENTING
-        TextField(
+        TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           cursorColor: Colors.black,
+          validator: validator,
           style: const TextStyle(
             fontSize: 14,
-            color: Colors.black, // paksa teks hitam
+            color: Colors.black,
           ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(fontSize: 14, color: Colors.grey[500]),
             filled: true,
             fillColor: Colors.white,
+            errorStyle: const TextStyle(color: Colors.redAccent),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 18,
               vertical: 12,
@@ -130,6 +153,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 color: Color(0xFF5F63FF),
                 width: 1.2,
               ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: const BorderSide(color: Colors.red, width: 1.2),
             ),
           ),
         ),
@@ -147,20 +178,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         const SizedBox(height: 6),
 
-        // >>> INI JUGA DIPAKSA HITAM
-        TextField(
+        TextFormField(
           controller: passwordCtrl,
           obscureText: obscure,
           cursorColor: Colors.black,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter your password';
+            }
+            if (value.length < 6) {
+              return 'Password must be at least 6 characters';
+            }
+            return null;
+          },
           style: const TextStyle(
             fontSize: 14,
-            color: Colors.black, // paksa teks hitam
+            color: Colors.black,
           ),
           decoration: InputDecoration(
             hintText: '●●●●●●●●●●●',
             hintStyle: TextStyle(fontSize: 16, color: Colors.grey[500]),
             filled: true,
             fillColor: Colors.white,
+            errorStyle: const TextStyle(color: Colors.redAccent),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 18,
               vertical: 12,
@@ -175,6 +215,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 color: Color(0xFF5F63FF),
                 width: 1.2,
               ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: const BorderSide(color: Colors.red, width: 1.2),
             ),
             suffixIcon: IconButton(
               icon: Icon(
@@ -193,56 +241,55 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Future<void> _handleSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await SupabaseService().signUp(
+        email: emailPhoneCtrl.text.trim(),
+        password: passwordCtrl.text,
+        fullName: fullNameCtrl.text.trim(),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Welcome, ${fullNameCtrl.text}! Account created successfully.'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // Navigate to home after successful sign up
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign up failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   Widget _buildSignUpButton() {
     return SizedBox(
       height: 50,
       child: ElevatedButton(
-        onPressed: () {
-          // Validasi input
-          if (emailPhoneCtrl.text.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enter your email or phone'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-          
-          if (fullNameCtrl.text.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enter your full name'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-          
-          if (passwordCtrl.text.isEmpty || passwordCtrl.text.length < 6) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Password must be at least 6 characters'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-
-          // Jika validasi sukses, tampilkan pesan dan navigasi ke home
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Welcome, ${fullNameCtrl.text}! Account created successfully.'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-          
-          // Navigasi ke home setelah sign up sukses
-          Future.delayed(const Duration(seconds: 1), () {
-            Navigator.pushReplacementNamed(context, '/home');
-          });
-        },
+        onPressed: _isLoading ? null : _handleSignUp,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5F63FF),
           shape: RoundedRectangleBorder(
@@ -250,7 +297,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
-        child: const Text('Sign Up'),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Text('Sign Up'),
       ),
     );
   }

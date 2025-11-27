@@ -81,19 +81,17 @@ class SupabaseService {
   /// Fetch all sellers (untuk Popular Sellers)
   Future<List<Map<String, dynamic>>> fetchSellers({
     int limit = 10,
-    String? category,
-    bool? isOpen,
+    bool? isOnline,
   }) async {
     var query = supabase
         .from('sellers')
-        .select();
+        .select('''
+          *,
+          profiles!inner(full_name, avatar_url, dom_block)
+        ''');
 
-    if (category != null) {
-      query = query.eq('category', category);
-    }
-
-    if (isOpen != null) {
-      query = query.eq('is_open', isOpen);
+    if (isOnline != null) {
+      query = query.eq('is_online', isOnline);
     }
 
     final data = await query.order('total_orders', ascending: false).limit(limit);
@@ -113,20 +111,18 @@ class SupabaseService {
   /// Create seller profile
   Future<Map<String, dynamic>> createSellerProfile({
     required String userId,
-    required String sellerName,
+    required String displayName,
     required String block,
     String? description,
-    String? category,
-    String? avatarUrl,
+    String? deliveryTime,
   }) async {
     final data = await supabase.from('sellers').insert({
-      'user_id': userId,
-      'seller_name': sellerName,
+      'id': userId, // sellers.id references profiles.id
+      'display_name': displayName,
       'block': block,
       'description': description,
-      'category': category,
-      'avatar_url': avatarUrl,
-      'is_open': true,
+      'delivery_time': deliveryTime,
+      'is_online': true,
       'rating': 0.0,
       'total_orders': 0,
     }).select().single();
@@ -137,19 +133,19 @@ class SupabaseService {
   /// Update seller profile
   Future<void> updateSellerProfile({
     required String sellerId,
-    String? sellerName,
+    String? displayName,
     String? block,
     String? description,
-    bool? isOpen,
+    String? deliveryTime,
+    bool? isOnline,
   }) async {
-    final updates = <String, dynamic>{
-      'updated_at': DateTime.now().toIso8601String(),
-    };
+    final updates = <String, dynamic>{};
 
-    if (sellerName != null) updates['seller_name'] = sellerName;
+    if (displayName != null) updates['display_name'] = displayName;
     if (block != null) updates['block'] = block;
     if (description != null) updates['description'] = description;
-    if (isOpen != null) updates['is_open'] = isOpen;
+    if (deliveryTime != null) updates['delivery_time'] = deliveryTime;
+    if (isOnline != null) updates['is_online'] = isOnline;
 
     await supabase.from('sellers').update(updates).eq('id', sellerId);
   }
@@ -173,10 +169,11 @@ class SupabaseService {
         .from('orders')
         .select('''
           *,
-          sellers(seller_name, avatar_url, rating, block)
+          sellers(display_name, rating, block),
+          profiles!orders_seller_id_fkey(avatar_url)
         ''')
         .eq('buyer_id', userId)
-        .inFilter('status', ['pending', 'confirmed', 'ready'])
+        .inFilter('status', ['pending', 'confirmed', 'preparing', 'ready'])
         .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(data);
@@ -191,7 +188,7 @@ class SupabaseService {
         .from('orders')
         .select()
         .eq('buyer_id', userId)
-        .inFilter('status', ['pending', 'confirmed', 'ready']);
+        .inFilter('status', ['pending', 'confirmed', 'preparing', 'ready']);
 
     return data.length;
   }
@@ -200,7 +197,8 @@ class SupabaseService {
   Future<Map<String, dynamic>> createOrder({
     required String sellerId,
     required double totalPrice,
-    String? deliveryTime,
+    double? deliveryFee,
+    String? deliveryAddress,
     String? notes,
   }) async {
     final userId = supabase.auth.currentUser?.id;
@@ -210,8 +208,9 @@ class SupabaseService {
       'buyer_id': userId,
       'seller_id': sellerId,
       'total_price': totalPrice,
+      'delivery_fee': deliveryFee ?? 0,
       'status': 'pending',
-      'delivery_time': deliveryTime,
+      'delivery_address': deliveryAddress,
       'notes': notes,
     }).select().single();
 
@@ -330,5 +329,205 @@ class SupabaseService {
         .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Create product
+  Future<Map<String, dynamic>> createProduct({
+    required String sellerId,
+    required String name,
+    required double price,
+    String? description,
+    String? category,
+    String? imageUrl,
+    String? keywords,
+  }) async {
+    final data = await supabase.from('products').insert({
+      'seller_id': sellerId,
+      'name': name,
+      'price': price,
+      'description': description,
+      'category': category,
+      'image_url': imageUrl,
+      'keywords': keywords,
+      'is_available': true,
+      'status': 'active',
+    }).select().single();
+
+    return data;
+  }
+
+  /// Update product
+  Future<void> updateProduct({
+    required int productId,
+    String? name,
+    double? price,
+    String? description,
+    String? category,
+    String? imageUrl,
+    bool? isAvailable,
+  }) async {
+    final updates = <String, dynamic>{};
+
+    if (name != null) updates['name'] = name;
+    if (price != null) updates['price'] = price;
+    if (description != null) updates['description'] = description;
+    if (category != null) updates['category'] = category;
+    if (imageUrl != null) updates['image_url'] = imageUrl;
+    if (isAvailable != null) updates['is_available'] = isAvailable;
+
+    await supabase.from('products').update(updates).eq('id', productId);
+  }
+
+  /// Delete product
+  Future<void> deleteProduct(int productId) async {
+    await supabase.from('products').delete().eq('id', productId);
+  }
+
+  // ==================== CHAT / MESSAGES ====================
+  
+  /// Send a message
+  Future<Map<String, dynamic>> sendMessage({
+    required String recipientId,
+    required String content,
+    String? conversationId,
+    String? messageType,
+    int? orderId,
+    String? imageUrl,
+  }) async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('User not logged in');
+
+    // If no conversation ID provided, find or create conversation
+    String finalConversationId = conversationId ?? '';
+    if (finalConversationId.isEmpty) {
+      final existingConv = await _findConversation(userId, recipientId);
+      if (existingConv != null) {
+        finalConversationId = existingConv['id'].toString();
+      } else {
+        final newConv = await _createConversation(userId, recipientId);
+        finalConversationId = newConv['id'].toString();
+      }
+    }
+
+    final data = await supabase.from('messages').insert({
+      'sender_id': userId,
+      'recipient_id': recipientId,
+      'content': content,
+      'conversation_id': int.parse(finalConversationId),
+      'message_type': messageType ?? 'text',
+      'order_id': orderId,
+      'image_url': imageUrl,
+      'is_read': false,
+    }).select().single();
+
+    // Update conversation last_message
+    await supabase.from('conversations').update({
+      'last_message': content,
+      'last_message_at': DateTime.now().toIso8601String(),
+    }).eq('id', int.parse(finalConversationId));
+
+    return data;
+  }
+
+  /// Find existing conversation between two users
+  Future<Map<String, dynamic>?> _findConversation(String userId1, String userId2) async {
+    final data = await supabase
+        .from('conversations')
+        .select()
+        .or('and(participant_1_id.eq.$userId1,participant_2_id.eq.$userId2),and(participant_1_id.eq.$userId2,participant_2_id.eq.$userId1)')
+        .maybeSingle();
+    return data;
+  }
+
+  /// Create new conversation
+  Future<Map<String, dynamic>> _createConversation(String userId1, String userId2) async {
+    final data = await supabase.from('conversations').insert({
+      'participant_1_id': userId1,
+      'participant_2_id': userId2,
+    }).select().single();
+    return data;
+  }
+
+  /// Fetch messages for a conversation
+  Future<List<Map<String, dynamic>>> fetchMessages(int conversationId) async {
+    final data = await supabase
+        .from('messages')
+        .select('''
+          *,
+          sender:profiles!messages_sender_id_fkey(full_name, avatar_url),
+          recipient:profiles!messages_recipient_id_fkey(full_name, avatar_url)
+        ''')
+        .eq('conversation_id', conversationId)
+        .order('created_at', ascending: true);
+
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Fetch user conversations
+  Future<List<Map<String, dynamic>>> fetchConversations() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    final data = await supabase
+        .from('conversations')
+        .select('''
+          *,
+          participant_1:profiles!conversations_participant_1_id_fkey(full_name, avatar_url),
+          participant_2:profiles!conversations_participant_2_id_fkey(full_name, avatar_url)
+        ''')
+        .or('participant_1_id.eq.$userId,participant_2_id.eq.$userId')
+        .order('last_message_at', ascending: false);
+
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Stream messages for real-time chat
+  Stream<List<Map<String, dynamic>>> messagesStream(int conversationId) {
+    return supabase
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .eq('conversation_id', conversationId)
+        .order('created_at', ascending: true);
+  }
+
+  /// Mark messages as read
+  Future<void> markMessagesAsRead(int conversationId, String userId) async {
+    await supabase
+        .from('messages')
+        .update({'is_read': true})
+        .eq('conversation_id', conversationId)
+        .eq('recipient_id', userId)
+        .eq('is_read', false);
+  }
+
+  /// Set typing indicator
+  Future<void> setTypingIndicator({
+    required int conversationId,
+    required bool isTyping,
+  }) async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    if (isTyping) {
+      await supabase.from('typing_indicators').upsert({
+        'conversation_id': conversationId,
+        'user_id': userId,
+        'is_typing': true,
+      });
+    } else {
+      await supabase
+          .from('typing_indicators')
+          .delete()
+          .eq('conversation_id', conversationId)
+          .eq('user_id', userId);
+    }
+  }
+
+  /// Stream typing indicators
+  Stream<List<Map<String, dynamic>>> typingIndicatorsStream(int conversationId) {
+    return supabase
+        .from('typing_indicators')
+        .stream(primaryKey: ['id'])
+        .eq('conversation_id', conversationId);
   }
 }
