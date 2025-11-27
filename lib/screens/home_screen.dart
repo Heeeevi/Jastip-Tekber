@@ -134,6 +134,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 12),
       ),
+       onSubmitted: (value) {
+        Navigator.pushNamed(context, '/search');
+      },
       style: const TextStyle(color: Colors.white),
     );
   }
