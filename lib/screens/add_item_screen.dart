@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class AddItemPage extends StatefulWidget {
   const AddItemPage({super.key});
@@ -9,6 +11,20 @@ class AddItemPage extends StatefulWidget {
 
 class _AddItemPageState extends State<AddItemPage> {
   bool _isAvailable = false;
+
+  File? _selectedImage;                         // image file
+  final ImagePicker _picker = ImagePicker();   // image picker
+
+  // fungsi pick image
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +54,7 @@ class _AddItemPageState extends State<AddItemPage> {
                   padding: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(
                     color: Colors.red,
-                    shape: BoxShape.circle
+                    shape: BoxShape.circle,
                   ),
                   child: const Text(
                     '2',
@@ -66,26 +82,43 @@ class _AddItemPageState extends State<AddItemPage> {
 
             Row(
               children: [
-                Expanded(
-                  child: _buildTextField(),
-                ),
+                Expanded(child: _buildTextField()),
                 const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5A6BF2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.image_outlined, color: Colors.white, size: 20),
-                      SizedBox(width: 6),
-                      Text("add image", style: TextStyle(color: Colors.white, fontSize: 12)),
-                    ],
+
+                // tombol add image
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5A6BF2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.image_outlined, color: Colors.white, size: 20),
+                        SizedBox(width: 6),
+                        Text("add image", style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
+
+            // image preview
+            if (_selectedImage != null) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  _selectedImage!,
+                  height: 140,
+                  width: 140,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
 
@@ -103,7 +136,7 @@ class _AddItemPageState extends State<AddItemPage> {
             _buildTextField(),
             const SizedBox(height: 20),
 
-            // Kata Kunci
+            // Kata kunci
             const Text("Kata kunci",
                 style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
@@ -134,14 +167,16 @@ class _AddItemPageState extends State<AddItemPage> {
                 Text(
                   _isAvailable ? "Available" : "Unavailable",
                   style: TextStyle(
-                      color: _isAvailable ? Colors.green : Colors.grey, fontSize: 13),
+                    color: _isAvailable ? Colors.green : Colors.grey,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
 
             const SizedBox(height: 30),
 
-            // Tombol Tambahkan Item
+            // tombol submit
             Container(
               width: double.infinity,
               height: 55,
