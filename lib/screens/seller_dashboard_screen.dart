@@ -21,9 +21,6 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   // State untuk Tab Pesanan (0: New, 1: Preparing, 2: Completed)
   int _selectedTabIndex = 0;
 
-  // State untuk toggle Online/Offline
-  bool _isStoreOnline = false;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,34 +84,14 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
             Center(child: _buildRoleToggle()),
             const SizedBox(height: 24),
 
-            // 2. DASHBOARD OVERVIEW (Header + Switch)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Dashboard Overview",
-                  style: GoogleFonts.inter(
-                    color: kTextWhite,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Row(
-                  children: [
-                    Switch(
-                      value: _isStoreOnline,
-                      activeColor: kPrimaryAccent,
-                      onChanged: (val) {
-                        setState(() => _isStoreOnline = val);
-                      },
-                    ),
-                    Text(
-                      _isStoreOnline ? "Online" : "Offline",
-                      style: GoogleFonts.inter(color: kTextGrey, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
+            // 2. DASHBOARD OVERVIEW
+            Text(
+              "Dashboard Overview",
+              style: GoogleFonts.inter(
+                color: kTextWhite,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -160,7 +137,9 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/add-item');
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimaryAccent,
                     shape: RoundedRectangleBorder(
