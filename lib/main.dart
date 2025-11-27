@@ -7,7 +7,6 @@ import 'screens/home_screen.dart';
 import 'screens/orders_screen.dart';
 import 'screens/seller_dashboard_page.dart';
 import 'screens/favorites_screen.dart';
-import 'screens/search_screen.dart'; 
 import 'screens/order_status_screen.dart';
 
 void main() {
@@ -70,7 +69,6 @@ class JasTipApp extends StatelessWidget {
         '/seller-dashboard': (_) => const SellerDashboardPage(),
         '/favorites': (_) => const FavoritesScreen(),
         '/buyer-dashboard': (_) => const BuyerDashboardScreen(),
-        '/search': (_) => const SearchScreen(),
         '/order-status': (context) => const OrderStatusScreen(),
       },
     );
