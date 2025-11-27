@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'orders_screen.dart';
-import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,7 +10,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
-  bool buyerMode = true;
 
   final categories = [
     {'icon': Icons.local_fire_department, 'label': 'Fast Food'},
@@ -44,7 +41,14 @@ class _HomeScreenState extends State<HomeScreen> {
         Stack(
           children: [
             IconButton(
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You have 2 new notifications'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
               icon: const Icon(Icons.notifications_none),
             ),
             Positioned(
@@ -75,12 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _pill('Buyer', buyerMode, () {
-            // Sudah di Buyer mode, tidak perlu navigasi
-            setState(() => buyerMode = true);
-          }),
+          _pill('Buyer', true, null), // Active di Buyer mode
           const SizedBox(width: 4),
-          _pill('Seller', !buyerMode, () {
+          _pill('Seller', false, () {
             // Navigasi ke Dashboard Seller menggunakan pushReplacement
             Navigator.pushReplacementNamed(context, '/seller-dashboard');
           }),
@@ -89,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _pill(String label, bool active, VoidCallback onTap) {
+  Widget _pill(String label, bool active, VoidCallback? onTap) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -112,6 +113,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _searchBar() {
     return TextField(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Search feature coming soon!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+      readOnly: true, // Sementara read-only sampai search diimplementasi
       decoration: InputDecoration(
         hintText: 'Search seller, food or dom blocks...',
         hintStyle: const TextStyle(color: Colors.white54),
@@ -235,12 +245,40 @@ class _HomeScreenState extends State<HomeScreen> {
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
             ),
-            // Menggunakan NetworkImage agar bisa langsung dijalankan tanpa aset lokal
             child: Image.network(
               'https://picsum.photos/id/292/800/600',
               height: 150,
               width: double.infinity,
               fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 150,
+                  color: const Color(0xFF2A2D35),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                      color: const Color(0xFF5F63D9),
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 150,
+                  color: const Color(0xFF2A2D35),
+                  child: const Center(
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: Colors.white54,
+                      size: 40,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           Padding(
@@ -303,7 +341,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigasi ke seller profile untuk order
+                      Navigator.pushNamed(context, '/seller-profile');
+                    },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 26,
@@ -341,7 +382,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Popular Sellers',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
-              TextButton(onPressed: () {}, child: const Text('See All')),
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('View all sellers feature coming soon!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: const Text('See All'),
+              ),
             ],
           ),
           SizedBox(
@@ -372,35 +423,27 @@ class _HomeScreenState extends State<HomeScreen> {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: (i) {
-        // --- LOGIKA NAVIGASI YANG DIGABUNGKAN ---
+        // Navigasi konsisten dengan screen lainnya
         switch (i) {
           case 0:
             // Sudah di Home
-            setState(() => currentIndex = i);
             break;
           case 1:
             // Ke Orders Screen
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const OrdersScreen(),
-                transitionDuration: Duration.zero,
-              ),
-            );
+            Navigator.pushReplacementNamed(context, '/orders');
             break;
           case 2:
-            // Ke Favorites Screen (Fitur dari Remote)
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const FavoritesScreen(),
-                transitionDuration: Duration.zero,
-              ),
-            );
+            // Ke Favorites Screen
+            Navigator.pushReplacementNamed(context, '/favorites');
             break;
           case 3:
-            // Placeholder Chat
-            setState(() => currentIndex = i);
+            // Placeholder Chat - Tampilkan snackbar
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Chat feature coming soon!'),
+                duration: Duration(seconds: 2),
+              ),
+            );
             break;
         }
       },
