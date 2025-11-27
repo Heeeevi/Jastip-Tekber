@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'buyer_dashboard_screen.dart';
+import 'package:flutter_application_2/screens/home_screen.dart';
 import 'add_item_screen.dart';
 
 class SellerDashboardPage extends StatefulWidget {
@@ -185,7 +185,7 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
             // Navigasi balik ke BuyerDashboardScreen
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const BuyerDashboardScreen()),
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
             );
           },
           child: Container(

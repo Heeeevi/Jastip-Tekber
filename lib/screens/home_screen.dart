@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orders_screen.dart';
+import 'seller_dashboard_page.dart';
 import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -57,22 +58,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _toggleBuyerSeller() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F22),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _pill('Buyer', buyerMode, () => setState(() => buyerMode = true)),
-          const SizedBox(width: 4),
-          _pill('Seller', !buyerMode, () => setState(() => buyerMode = false)),
-        ],
-      ),
-    );
-  }
+  return Container(
+    decoration: BoxDecoration(
+      color: const Color(0xFF1F1F22),
+      borderRadius: BorderRadius.circular(30),
+    ),
+    padding: const EdgeInsets.all(4),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _pill('Buyer', buyerMode, () => setState(() => buyerMode = true)),
+
+        const SizedBox(width: 4),
+
+        // === UBAH DI SINI ===
+        _pill('Seller', !buyerMode, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SellerDashboardPage()),
+          );
+        }),
+      ],
+    ),
+  );
+}
 
   Widget _pill(String label, bool active, VoidCallback onTap) {
     return GestureDetector(
