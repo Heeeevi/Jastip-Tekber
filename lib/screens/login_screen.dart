@@ -32,11 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       alignment: Alignment.center,
-      child: Text('JasTip',
-          style: GoogleFonts.pacifico(
-            color: Colors.white,
-            fontSize: 40,
-          )),
+      child: Text(
+        'JasTip',
+        style: GoogleFonts.pacifico(color: Colors.white, fontSize: 40),
+      ),
     );
   }
 
@@ -51,25 +50,37 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               _header(),
               const SizedBox(height: 28),
-              const Text('Email or Mobile Phone', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              const Text(
+                'Email or Mobile Phone',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
               const SizedBox(height: 6),
               TextField(controller: emailPhoneCtrl),
               const SizedBox(height: 20),
-              const Text('Password', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              const Text(
+                'Password',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: passwordCtrl,
                 obscureText: obscure,
                 decoration: InputDecoration(
                   suffixIcon: IconButton(
-                    icon: Icon(obscure ? Icons.visibility : Icons.visibility_off, color: Colors.black87),
+                    icon: Icon(
+                      obscure ? Icons.visibility : Icons.visibility_off,
+                      color: Colors.black87,
+                    ),
                     onPressed: () => setState(() => obscure = !obscure),
                   ),
                 ),
               ),
               const SizedBox(height: 14),
               Center(
-                child: Text('Forgot password?', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                child: Text(
+                  'Forgot password?',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
               ),
               const SizedBox(height: 30),
               SizedBox(
@@ -84,13 +95,20 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 40),
               Center(
                 child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/signup'),
+                  onTap: () =>
+                      Navigator.pushReplacementNamed(context, '/signup'),
                   child: RichText(
                     text: const TextSpan(
                       text: "Don't Have Account? ",
                       style: TextStyle(color: Colors.white70),
                       children: [
-                        TextSpan(text: 'Sign Up', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        TextSpan(
+                          text: 'Sign Up',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
