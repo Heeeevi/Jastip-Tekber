@@ -37,51 +37,60 @@ class _HomeScreenState extends State<HomeScreen> {
           child: const Icon(Icons.person, color: Colors.white),
         ),
         const SizedBox(width: 12),
-        Text('JasTip', style: GoogleFonts.pacifico(fontSize: 28, color: Colors.white)),
+        Text(
+          'JasTip',
+          style: GoogleFonts.pacifico(fontSize: 28, color: Colors.white),
+        ),
         const Spacer(),
         Stack(
           children: [
-            IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none)),
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.notifications_none),
+            ),
             Positioned(
               right: 10,
               top: 10,
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
                 child: const Text('2', style: TextStyle(fontSize: 10)),
               ),
-            )
+            ),
           ],
-        )
+        ),
       ],
     );
   }
 
   Widget _toggleBuyerSeller() {
-  return Container(
-    decoration: BoxDecoration(
-      color: const Color(0xFF1F1F22),
-      borderRadius: BorderRadius.circular(30),
-    ),
-    padding: const EdgeInsets.all(4),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _pill('Buyer', buyerMode, () => setState(() => buyerMode = true)),
-
-        const SizedBox(width: 4),
-
-        // === UBAH DI SINI ===
-        _pill('Seller', !buyerMode, () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SellerDashboardPage()),
-          );
-        }),
-      ],
-    ),
-  );
-}
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F1F22),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _pill('Buyer', buyerMode, () => setState(() => buyerMode = true)),
+          const SizedBox(width: 4),
+          _pill('Seller', !buyerMode, () {
+            setState(() => buyerMode = false);
+            // Navigasi ke Dashboard Seller
+            Navigator.pushNamed(context, '/seller-dashboard').then((_) {
+              // Reset kembali ke mode Buyer saat user menekan tombol back
+              // dari halaman Seller Dashboard
+              setState(() => buyerMode = true);
+            });
+          }),
+        ],
+      ),
+    );
+  }
 
   Widget _pill(String label, bool active, VoidCallback onTap) {
     return GestureDetector(
@@ -93,7 +102,13 @@ class _HomeScreenState extends State<HomeScreen> {
           color: active ? const Color(0xFF5F63D9) : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
         ),
-        child: Text(label, style: TextStyle(color: active ? Colors.white : Colors.white70, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : Colors.white70,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -106,7 +121,10 @@ class _HomeScreenState extends State<HomeScreen> {
         filled: true,
         fillColor: const Color(0xFF1C1F26),
         prefixIcon: const Icon(Icons.search, color: Colors.white54),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
         contentPadding: const EdgeInsets.symmetric(vertical: 12),
       ),
       style: const TextStyle(color: Colors.white),
@@ -115,46 +133,74 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _sellerCard(Map<String, dynamic> seller) {
     final open = seller['open'] as bool;
-    return Container(
-      width: 120,
-      margin: const EdgeInsets.only(right: 14),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1F26),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(radius: 24, backgroundColor: Colors.grey.shade600, child: const Icon(Icons.person)),
-          const SizedBox(height: 8),
-          Text(seller['name'], maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: open ? Colors.green : Colors.red,
-              borderRadius: BorderRadius.circular(8),
+    // MODIFIKASI: Menambahkan GestureDetector untuk navigasi ke Profil Seller
+    return GestureDetector(
+      onTap: () {
+        // Membuka halaman seller_profile_page.dart
+        Navigator.pushNamed(context, '/seller-profile');
+      },
+      child: Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 14),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1F26),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.grey.shade600,
+              child: const Icon(Icons.person),
             ),
-            child: Text(open ? 'Open' : 'Closed', style: const TextStyle(fontSize: 10)),
-          ),
-          const SizedBox(height: 4),
-          Text('Blok ${seller['block']}', style: const TextStyle(fontSize: 10, color: Colors.white70)),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {},
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.white24),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            const SizedBox(height: 8),
+            Text(
+              seller['name'],
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: open ? Colors.green : Colors.red,
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('Follow'),
+              child: Text(
+                open ? 'Open' : 'Closed',
+                style: const TextStyle(fontSize: 10),
+              ),
             ),
-          )
-        ],
+            const SizedBox(height: 4),
+            Text(
+              'Blok ${seller['block']}',
+              style: const TextStyle(fontSize: 10, color: Colors.white70),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  // Navigasi ke profil seller
+                  Navigator.pushNamed(context, '/seller-profile');
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white24),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: const Text('Follow'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -192,7 +238,13 @@ class _HomeScreenState extends State<HomeScreen> {
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
             ),
-            child: Image.asset('assets/images/amber.jpeg', height: 150, width: double.infinity, fit: BoxFit.cover),
+            // Menggunakan NetworkImage agar bisa langsung dijalankan tanpa aset lokal
+            child: Image.network(
+              'https://picsum.photos/id/292/800/600',
+              height: 150,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
@@ -202,26 +254,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF5F63D9),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Text('15 Orders', style: TextStyle(fontSize: 11)),
+                      child: const Text(
+                        '15 Orders',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.blueGrey.shade700,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Text('Closes in 45 min', style: TextStyle(fontSize: 11)),
+                      child: const Text(
+                        'Closes in 45 min',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text('Bakso Keputih', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text(
+                  'Bakso Keputih',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 4),
                 const Row(
                   children: [
@@ -231,13 +298,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                const Text('Delivery: 6:00 - 7:00 PM', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                const Text(
+                  'Delivery: 6:00 - 7:00 PM',
+                  style: TextStyle(fontSize: 11, color: Colors.white70),
+                ),
                 const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
                     onPressed: () {},
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12)),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 26,
+                        vertical: 12,
+                      ),
+                    ),
                     child: const Text('Order'),
                   ),
                 ),
@@ -258,19 +333,17 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           _buildHeader(),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              _toggleBuyerSeller(),
-              const Spacer(),
-            ],
-          ),
+          Row(children: [_toggleBuyerSeller(), const Spacer()]),
           const SizedBox(height: 18),
           _searchBar(),
           const SizedBox(height: 26),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Popular Sellers', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              const Text(
+                'Popular Sellers',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
               TextButton(onPressed: () {}, child: const Text('See All')),
             ],
           ),
@@ -286,9 +359,12 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 28),
           _categoriesRow(),
           const SizedBox(height: 32),
-          const Text('Active Purchase Orders', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          const Text(
+            'Active Purchase Orders',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 14),
-            _activeOrderCard(),
+          _activeOrderCard(),
           const SizedBox(height: 40),
         ],
       ),
@@ -299,11 +375,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: (i) {
+        // --- LOGIKA NAVIGASI YANG DIGABUNGKAN ---
         switch (i) {
           case 0:
-            // already on Home
+            // Sudah di Home
+            setState(() => currentIndex = i);
             break;
           case 1:
+            // Ke Orders Screen
             Navigator.pushReplacement(
               context,
               PageRouteBuilder(
@@ -313,6 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
             break;
           case 2:
+            // Ke Favorites Screen (Fitur dari Remote)
             Navigator.pushReplacement(
               context,
               PageRouteBuilder(
@@ -322,10 +402,10 @@ class _HomeScreenState extends State<HomeScreen> {
             );
             break;
           case 3:
-            // nanti kalau sudah ada chat screen
+            // Placeholder Chat
+            setState(() => currentIndex = i);
             break;
         }
-        setState(() => currentIndex = i);
       },
       backgroundColor: const Color(0xFF14171D),
       type: BottomNavigationBarType.fixed,
@@ -333,18 +413,24 @@ class _HomeScreenState extends State<HomeScreen> {
       unselectedItemColor: Colors.white60,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
-        BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Favorites'),
-        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.receipt_long),
+          label: 'Orders',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.favorite_border),
+          label: 'Favorites',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.chat_bubble_outline),
+          label: 'Chat',
+        ),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _bodyContent(),
-      bottomNavigationBar: _bottomNav(),
-    );
+    return Scaffold(body: _bodyContent(), bottomNavigationBar: _bottomNav());
   }
 }
