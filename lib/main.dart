@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_2/screens/buyer_dashboard_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-
 import 'screens/login_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
@@ -68,6 +67,7 @@ class JasTipApp extends StatelessWidget {
         '/orders': (_) => const OrdersScreen(),
         '/seller-dashboard': (_) => const SellerDashboardPage(),
         '/favorites': (_) => const FavoritesScreen(),
+        '/buyer-dashboard': (_) => const BuyerDashboardScreen(),
       },
     );
   }

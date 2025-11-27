@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'buyer_dashboard_screen.dart';
 
 class SellerDashboardPage extends StatefulWidget {
   const SellerDashboardPage({super.key});
@@ -158,39 +159,53 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
     );
   }
 
+  //pindah halaman ke buyer
   Widget _buildRoleToggle() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF202533),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildToggleItem("Buyer", false),
-          _buildToggleItem("Seller", true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleItem(String text, bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF5A6BF2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isActive ? Colors.white : Colors.grey,
-          fontWeight: FontWeight.bold,
+  return Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: const Color(0xFF202533),
+      borderRadius: BorderRadius.circular(25),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () {
+            // Navigasi balik ke BuyerDashboardScreen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const BuyerDashboardScreen()),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.transparent, // Bisa diatur sesuai active
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              "Buyer",
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
+          ),
         ),
-      ),
-    );
-  }
+        const SizedBox(width: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF5A6BF2),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text(
+            "Seller",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildSectionHeader(String title, {bool withOfflineSwitch = false}) {
     return Row(
