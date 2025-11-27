@@ -11,7 +11,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final TextEditingController emailPhoneCtrl = TextEditingController();
+  final TextEditingController emailCtrl = TextEditingController();
   final TextEditingController fullNameCtrl = TextEditingController();
   final TextEditingController passwordCtrl = TextEditingController();
   final SupabaseService _supabaseService = SupabaseService();
@@ -21,7 +21,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
-    emailPhoneCtrl.dispose();
+    emailCtrl.dispose();
     fullNameCtrl.dispose();
     passwordCtrl.dispose();
     super.dispose();
@@ -63,9 +63,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildTextField(
-                      label: 'Email or Mobile Phone',
-                      hint: 'Budi123@mail.com',
-                      controller: emailPhoneCtrl,
+                      label: 'Email',
+                      hint: 'example@mail.com',
+                      controller: emailCtrl,
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 18),
@@ -221,17 +221,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Future<void> _handleSignUp() async {
     // Validasi input
-    if (emailPhoneCtrl.text.isEmpty) {
-      _showSnackBar('Please enter your email or phone', Colors.red);
+    final email = emailCtrl.text.trim();
+    final fullName = fullNameCtrl.text.trim();
+    final password = passwordCtrl.text;
+
+    if (email.isEmpty || !email.contains('@')) {
+      _showSnackBar('Please enter a valid email address', Colors.red);
       return;
     }
 
-    if (fullNameCtrl.text.isEmpty) {
+    if (fullName.isEmpty) {
       _showSnackBar('Please enter your full name', Colors.red);
       return;
     }
 
-    if (passwordCtrl.text.isEmpty || passwordCtrl.text.length < 6) {
+    if (password.isEmpty || password.length < 6) {
       _showSnackBar('Password must be at least 6 characters', Colors.red);
       return;
     }
@@ -241,29 +245,50 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       // Sign up dengan Supabase
       final response = await _supabaseService.signUp(
-        email: emailPhoneCtrl.text.trim(),
-        password: passwordCtrl.text,
-        fullName: fullNameCtrl.text.trim(),
+        email: email,
+        password: password,
+        fullName: fullName,
       );
 
       if (!mounted) return;
 
       if (response.user != null) {
+        // Sukses! Langsung auto sign in dan redirect ke home
         _showSnackBar(
-          'Account created successfully! Please login with your credentials.',
+          'Welcome, $fullName! Account created successfully.',
           Colors.green,
         );
 
-        // Navigasi ke login setelah sign up sukses
-        Future.delayed(const Duration(seconds: 1), () {
+        // Langsung navigate ke home (sudah auto signed in)
+        Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/login');
+            Navigator.pushReplacementNamed(context, '/home');
           }
         });
+      } else {
+        // Gagal create user
+        _showSnackBar(
+          'Registration failed. Please try again.',
+          Colors.red,
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('Sign up failed: ${e.toString()}', Colors.red);
+      
+      // Parse error message untuk user-friendly
+      String errorMessage = 'Sign up failed';
+      
+      if (e.toString().contains('User already registered')) {
+        errorMessage = 'Email already registered. Please sign in instead.';
+      } else if (e.toString().contains('Invalid email')) {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (e.toString().contains('weak password')) {
+        errorMessage = 'Password is too weak. Use at least 6 characters.';
+      } else {
+        errorMessage = 'Sign up failed: ${e.toString()}';
+      }
+      
+      _showSnackBar(errorMessage, Colors.red);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

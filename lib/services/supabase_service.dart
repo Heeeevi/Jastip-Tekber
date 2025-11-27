@@ -9,29 +9,24 @@ class SupabaseService {
   Future<AuthResponse> signUp({
     required String email,
     required String password,
-    String? fullName,
+    required String fullName,
+    String? phone,
+    String? domBlock,
+    String? roomNumber,
   }) async {
     final response = await supabase.auth.signUp(
       email: email,
       password: password,
-      data: {'full_name': fullName},
+      data: {
+        'full_name': fullName,
+        'phone': phone,
+        'dom_block': domBlock,
+        'room_number': roomNumber,
+      },
     );
 
-    // Create user profile in 'users' table after successful signup
-    if (response.user != null) {
-      try {
-        await supabase.from('users').insert({
-          'id': response.user!.id,
-          'email': email,
-          'full_name': fullName ?? '',
-          'created_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        });
-      } catch (e) {
-        // If insert fails (e.g., user already exists), continue anyway
-        print('Error creating user profile: $e');
-      }
-    }
+    // Profile akan otomatis dibuat oleh trigger handle_new_user di Supabase
+    // Tidak perlu manual insert karena sudah ada trigger
 
     return response;
   }

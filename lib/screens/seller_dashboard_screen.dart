@@ -71,6 +71,27 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
               ),
             ],
           ),
+          // Logout Button
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: kTextWhite),
+            onSelected: (value) {
+              if (value == 'logout') {
+                _showLogoutDialog();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Logout', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -739,5 +760,72 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
       decoration: BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
       child: Icon(icon, size: 16, color: color),
     );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog
+                await _handleLogout();
+              },
+              child: const Text(
+                'Logout',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      // Show loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logging out...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
+      // Sign out from Supabase (akan diimplementasi)
+      // await SupabaseService().signOut();
+
+      // Navigate to login screen
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (route) => false, // Remove all previous routes
+      );
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Logged out successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
