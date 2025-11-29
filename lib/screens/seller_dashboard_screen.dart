@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/supabase_service.dart';
 
 // --- WARNA KONSTANTA (Sesuai Desain) ---
 const Color kBgDark = Color(0xFF0E1118);
@@ -20,6 +21,93 @@ class SellerDashboardScreen extends StatefulWidget {
 class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   // State untuk Tab Pesanan (0: New, 1: Preparing, 2: Completed)
   int _selectedTabIndex = 0;
+  final _svc = SupabaseService();
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _orders = [];
+  List<Map<String, dynamic>> _products = [];
+  Map<String, dynamic>? _sellerProfile;
+  // online update flag removed (inline logic)
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      // Ensure seller profile exists silently
+      _sellerProfile = await _svc.getCurrentSellerProfile();
+      if (_sellerProfile == null) {
+        // If not exists, show prompt message (not auto-create here to avoid accidental seller creation)
+        _error = 'Seller profile not found. Create one first from Home screen.';
+        _products = [];
+        _orders = [];
+      } else {
+        await _loadOrders();
+        await _loadProducts();
+      }
+    } catch (e) {
+      _error = 'Failed to load: $e';
+    } finally {
+      _loading = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _loadOrders() async {
+    // Load all seller orders (we will group client-side)
+    final data = await _svc.fetchSellerOrders();
+    _orders = data;
+  }
+
+  Future<void> _loadProducts() async {
+    final sellerId = _svc.getCurrentUser()?.id;
+    if (sellerId == null) return;
+    final data = await _svc.getProductsBySeller(sellerId);
+    _products = data;
+  }
+
+  List<Map<String,dynamic>> _filteredOrdersForTab() {
+    const newStatuses = ['pending','confirmed'];
+    const prepStatuses = ['preparing','ready','delivering'];
+    const doneStatuses = ['completed','cancelled'];
+    switch (_selectedTabIndex) {
+      case 0: return _orders.where((o) => newStatuses.contains(o['status'])).toList();
+      case 1: return _orders.where((o) => prepStatuses.contains(o['status'])).toList();
+      case 2: return _orders.where((o) => doneStatuses.contains(o['status'])).toList();
+      default: return [];
+    }
+  }
+
+  int _countTodayOrders() {
+    final today = DateTime.now();
+    return _orders.where((o) {
+      final created = DateTime.tryParse(o['created_at'] ?? '');
+      if (created == null) return false;
+      return created.year == today.year && created.month == today.month && created.day == today.day;
+    }).length;
+  }
+
+  int _countActiveOrders() {
+    return _orders.where((o) => !['completed','cancelled'].contains(o['status'])).length;
+  }
+
+  Future<void> _changeOrderStatus(int orderId, String newStatus) async {
+    try {
+      await _svc.updateOrderStatus(orderId: orderId, status: newStatus);
+      await _loadOrders();
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed update status: $e')));
+      }
+    }
+  }
+
+  // Online toggle handled inline; legacy method removed
 
   @override
   Widget build(BuildContext context) {
@@ -117,69 +205,74 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
             const SizedBox(height: 16),
 
             // 3. STATS CARDS
-            Row(
-              children: [
-                Expanded(child: _buildStatCard("Today's Orders", "20")),
-                const SizedBox(width: 16),
-                Expanded(child: _buildStatCard("Active Orders", "5")),
-              ],
-            ),
-            const SizedBox(height: 30),
-
-            // 4. ORDER MANAGEMENT SECTION
-            Text(
-              "Order Management",
-              style: GoogleFonts.inter(
-                color: kTextWhite,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            if (_loading)
+              const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+            else if (_error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              )
+            else ...[
+              Row(
+                children: [
+                  Expanded(child: _buildStatCard("Today's Orders", _countTodayOrders().toString())),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildStatCard("Active Orders", _countActiveOrders().toString())),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            _buildCustomTabBar(),
-            const SizedBox(height: 20),
-
-            // --- LOGIC SWITCH KONTEN BERDASARKAN TAB ---
-            // Bagian ini menentukan widget apa yang muncul berdasarkan _selectedTabIndex
-            _buildOrderListContent(),
-
-            const SizedBox(height: 30),
-
-            // 5. MENU MANAGEMENT SECTION
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Menu Management",
-                  style: GoogleFonts.inter(
-                    color: kTextWhite,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+              const SizedBox(height: 30),
+              // 4. ORDER MANAGEMENT SECTION
+              Text(
+                "Order Management",
+                style: GoogleFonts.inter(
+                  color: kTextWhite,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/add-item');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryAccent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+              ),
+              const SizedBox(height: 16),
+              _buildDynamicTabBar(),
+              const SizedBox(height: 20),
+              _buildOrderListContent(),
+              const SizedBox(height: 30),
+              // 5. MENU MANAGEMENT SECTION
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Menu Management",
+                    style: GoogleFonts.inter(
+                      color: kTextWhite,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: const Text(
-                    "Add Item",
-                    style: TextStyle(color: Colors.white),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/add-item');
+                      await _loadProducts();
+                      if (mounted) setState(() {});
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                    child: const Text(
+                      "Add Item",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildMenuItemCard(),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildProductsList(),
+            ],
             const SizedBox(height: 40), // Bottom padding
           ],
         ),
@@ -236,16 +329,38 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
 
   // Fungsi Helper untuk menentukan konten Tab Order
   Widget _buildOrderListContent() {
-    switch (_selectedTabIndex) {
-      case 0:
-        return _buildNewOrderCard(); // Tampilan Tab New
-      case 1:
-        return _buildPreparingOrderCard(); // Tampilan Tab Preparing
-      case 2:
-        return _buildCompletedOrderCard(); // Tampilan Tab Completed
-      default:
-        return const SizedBox();
+    final data = _filteredOrdersForTab();
+    if (data.isEmpty) {
+      return const Text('No orders for this section', style: TextStyle(color: kTextGrey));
     }
+    return Column(
+      children: data.map((o) => _buildOrderCardDynamic(o)).toList(),
+    );
+  }
+
+  Widget _buildOrderCardDynamic(Map<String, dynamic> order) {
+    final buyer = order['buyer'] as Map<String, dynamic>?;
+    final buyerName = buyer?['full_name'] ?? 'Buyer';
+    final status = order['status'] ?? 'pending';
+    final id = order['id'];
+    final total = order['total_price'];
+    final createdAt = order['created_at'] ?? '';
+    final dt = DateTime.tryParse(createdAt);
+    final createdStr = dt != null ? '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}' : createdAt;
+    return Container(
+      margin: const EdgeInsets.only(bottom:16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: kCardColor,borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          _buildOrderHeader('Order #$id', buyerName, createdStr, buyer?['dom_block'], buyer?['room_number']),
+          const Padding(padding: EdgeInsets.symmetric(vertical:12), child: Divider(color: Colors.white12)),
+          _buildOrderTotal('Rp${total.toString()}'),
+          const SizedBox(height:12),
+          _buildStatusButtons(id, status),
+        ],
+      ),
+    );
   }
 
   Widget _buildRoleToggle() {
@@ -312,18 +427,17 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
     );
   }
 
-  Widget _buildCustomTabBar() {
+  Widget _buildDynamicTabBar() {
+    final newCount = _orders.where((o) => ['pending','confirmed'].contains(o['status'])).length;
+    final prepCount = _orders.where((o) => ['preparing','ready','delivering'].contains(o['status'])).length;
+    final doneCount = _orders.where((o) => ['completed','cancelled'].contains(o['status'])).length;
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: kTextGrey, width: 0.5)),
-      ),
-      child: Row(
-        children: [
-          _buildTabItem("New (3)", 0),
-          _buildTabItem("Preparing (2)", 1),
-          _buildTabItem("Completed (15)", 2),
-        ],
-      ),
+      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: kTextGrey, width: 0.5))),
+      child: Row(children: [
+        _buildTabItem('New ($newCount)',0),
+        _buildTabItem('Preparing ($prepCount)',1),
+        _buildTabItem('Completed ($doneCount)',2),
+      ]),
     );
   }
 
@@ -355,272 +469,110 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   }
 
   // --- ORDER CARD (TAB: NEW) ---
-  Widget _buildNewOrderCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kCardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          _buildOrderHeader("Order #0002", "Michael"),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Colors.white12),
-          ),
-          _buildOrderItemRow("1x Joder", "Rp20000"),
-          const SizedBox(height: 8),
-          _buildOrderItemRow("1x Es Teh", "Rp5000"),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Colors.white12),
-          ),
-          _buildOrderTotal("Rp25000"),
-          const SizedBox(height: 16),
-          // Buttons untuk New Order
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kErrorColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    "Tolak",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kSuccessColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    "Setujui",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- ORDER CARD (TAB: PREPARING) ---
-  Widget _buildPreparingOrderCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kCardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          _buildOrderHeader("Order #0001", "Michael"),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Colors.white12),
-          ),
-          _buildOrderItemRow("1x Nasi Goreng", "Rp15.000"),
-          const SizedBox(height: 8),
-          _buildOrderItemRow("1x Es Teh", "Rp5.000"),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Colors.white12),
-          ),
-          _buildOrderTotal("Rp20.000"),
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white12,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    "Status: menuju restoran",
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kErrorColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    "Cancel",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- ORDER CARD (TAB: COMPLETED) ---
-  Widget _buildCompletedOrderCard() {
-    // Karena di desain ada 2 contoh (Selesai & Dibatalkan), kita bungkus dalam Column
-    return Column(
-      children: [
-        // CONTOH 1: Status Selesai (Tombol Hijau Full)
-        _buildCompletedCardItem(
-          statusText: "Selesai",
-          statusColor: kSuccessColor,
-        ),
-
-        const SizedBox(height: 16),
-
-        // CONTOH 2: Status Dibatalkan (Tombol Merah Full)
-        _buildCompletedCardItem(
-          statusText: "Dibatalkan",
-          statusColor: kErrorColor,
-        ),
-      ],
-    );
-  }
+  // Legacy mock methods retained (unused) removed in dynamic version
+  // Legacy placeholder widgets removed.
 
   // Helper khusus untuk item completed agar tidak duplikasi kode
-  Widget _buildCompletedCardItem({
-    required String statusText,
-    required Color statusColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kCardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          _buildOrderHeader("Order #0001", "Michael"),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Colors.white12),
-          ),
-          _buildOrderItemRow("1x Nasi Goreng", "Rp15.000"),
-          const SizedBox(height: 8),
-          _buildOrderItemRow("1x Es Teh", "Rp5.000"),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Colors.white12),
-          ),
-          _buildOrderTotal("Rp20.000"),
-          const SizedBox(height: 16),
-
-          // Tombol Status Full Width
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {}, // Biasanya tombol histori tidak bisa diklik
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    statusColor, // Warna sesuai parameter (Merah/Hijau)
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text(
-                statusText,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Legacy unused widgets removed
 
   // --- Helper Widgets Shared ---
 
-  Widget _buildOrderHeader(String orderId, String customerName) {
+  Widget _buildOrderHeader(String orderId, String customerName, String created, String? block, String? room) {
+    final loc = [if(block!=null) 'Block $block', if(room!=null) 'Room $room'].join(', ');
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              orderId,
-              style: GoogleFonts.inter(color: kTextWhite, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "April 20, 2025 | 10:00 AM",
-              style: GoogleFonts.inter(color: kTextGrey, fontSize: 10),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const CircleAvatar(backgroundColor: Colors.grey, radius: 16),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  customerName,
-                  style: GoogleFonts.inter(
-                    color: kTextWhite,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  "Block A, Room 302",
-                  style: GoogleFonts.inter(color: kTextGrey, fontSize: 10),
-                ),
-              ],
-            ),
-          ],
-        ),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(orderId, style: GoogleFonts.inter(color: kTextWhite, fontSize: 16)),
+          const SizedBox(height:4),
+          Text(created, style: GoogleFonts.inter(color: kTextGrey, fontSize: 10)),
+        ]),
+        Row(children:[
+          const CircleAvatar(backgroundColor: Colors.grey, radius:16),
+          const SizedBox(width:8),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children:[
+            Text(customerName, style: GoogleFonts.inter(color: kTextWhite, fontWeight: FontWeight.bold)),
+            if(loc.isNotEmpty) Text(loc, style: GoogleFonts.inter(color: kTextGrey, fontSize:10)),
+          ]),
+        ]),
       ],
     );
+  }
+
+  Widget _buildStatusButtons(int orderId, String status) {
+    if (['completed','cancelled'].contains(status)) {
+      final color = status=='completed'? kSuccessColor : kErrorColor;
+      return SizedBox(width: double.infinity, child: ElevatedButton(
+        onPressed: (){},
+        style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+        child: Text(status, style: const TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+      ));
+    }
+    // For new and preparing statuses provide progression buttons
+    List<Map<String,String>> transitions = [];
+    if (['pending','confirmed'].contains(status)) {
+      transitions = [
+        {'label':'Confirm','to':'confirmed'},
+        {'label':'Start','to':'preparing'},
+        {'label':'Cancel','to':'cancelled'},
+      ];
+    } else {
+      transitions = [
+        {'label':'Ready','to':'ready'},
+        {'label':'Deliver','to':'delivering'},
+        {'label':'Complete','to':'completed'},
+        {'label':'Cancel','to':'cancelled'},
+      ];
+    }
+    return Wrap(spacing:8, runSpacing:8, children: transitions.map((t){
+      final isDanger = t['to']=='cancelled';
+      return ElevatedButton(
+        onPressed: () => _changeOrderStatus(orderId, t['to']!),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDanger? kErrorColor : kPrimaryAccent,
+          padding: const EdgeInsets.symmetric(horizontal:14, vertical:10),
+        ),
+        child: Text(t['label']!, style: const TextStyle(color: Colors.white,fontSize:12)),
+      );
+    }).toList());
+  }
+
+  Widget _buildProductsList() {
+    if (_products.isEmpty) {
+      return const Text('No products yet. Add one.', style: TextStyle(color: kTextGrey));
+    }
+    return Column(children: _products.map((p){
+      final available = p['is_available'] == true;
+      return Container(
+        margin: const EdgeInsets.only(bottom:12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(16)),
+        child: Row(children:[
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
+            Text(p['name'] ?? 'Item', style: GoogleFonts.inter(color: kTextWhite, fontWeight: FontWeight.bold)),
+            if(p['category']!=null) Text(p['category'], style: GoogleFonts.inter(color: kTextGrey, fontSize:11)),
+            const SizedBox(height:6),
+            Row(children:[Switch(
+              value: available,
+              activeColor: kPrimaryAccent,
+              onChanged: (v) async {
+                try {
+                  await _svc.updateProduct(productId: p['id'], isAvailable: v);
+                  p['is_available'] = v;
+                  if (mounted) setState(() {});
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed update product: $e')));
+                }
+              },
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ), const SizedBox(width:6), Text(available? 'Available':'Unavailable', style: TextStyle(color: available? kSuccessColor: Colors.red, fontSize:11))])
+          ])),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children:[
+            Text('Rp${(p['price'] ?? 0).toString()}', style: GoogleFonts.inter(color: kTextWhite, fontWeight: FontWeight.bold)),
+          ])
+        ]),
+      );
+    }).toList());
   }
 
   Widget _buildOrderTotal(String total) {
@@ -647,120 +599,9 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
     );
   }
 
-  Widget _buildOrderItemRow(String item, String price) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(item, style: GoogleFonts.inter(color: kTextWhite, fontSize: 14)),
-        Text(price, style: GoogleFonts.inter(color: kTextWhite, fontSize: 14)),
-      ],
-    );
-  }
+  // Removed legacy menu/item row helpers (replaced by dynamic products list)
 
-  // --- MENU ITEM CARD ---
-  Widget _buildMenuItemCard() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: kCardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          // Gambar Menu
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(12),
-              image: const DecorationImage(
-                image: NetworkImage("https://picsum.photos/id/40/200/200"),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-
-          // Info Menu
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Nasi Goreng",
-                  style: GoogleFonts.inter(
-                    color: kTextWhite,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  "Rice",
-                  style: GoogleFonts.inter(color: kTextGrey, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-
-                // Toggle Available
-                Row(
-                  children: [
-                    SizedBox(
-                      height: 24,
-                      width: 40,
-                      child: Switch(
-                        value: true,
-                        activeColor: kPrimaryAccent,
-                        onChanged: (val) {},
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Available",
-                      style: GoogleFonts.inter(
-                        color: kSuccessColor,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Harga & Edit Actions
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "Rp15000",
-                style: GoogleFonts.inter(
-                  color: kTextWhite,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _buildIconAction(Icons.edit, Colors.grey),
-                  const SizedBox(width: 8),
-                  _buildIconAction(Icons.delete, Colors.grey),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIconAction(IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
-      child: Icon(icon, size: 16, color: color),
-    );
-  }
+  // Legacy icon action removed.
 
   void _showLogoutDialog() {
     showDialog(
@@ -800,8 +641,8 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
         ),
       );
 
-      // Sign out from Supabase (akan diimplementasi)
-      // await SupabaseService().signOut();
+  // Sign out from Supabase
+  await SupabaseService().signOut();
 
       // Navigate to login screen
       Navigator.pushNamedAndRemoveUntil(

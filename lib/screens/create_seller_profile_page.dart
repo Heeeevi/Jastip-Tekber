@@ -28,6 +28,8 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
   final TextEditingController _deliveryTimeController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _blockController = TextEditingController();
+  final TextEditingController _deliveryFeeController = TextEditingController();
+  final TextEditingController _ratingController = TextEditingController();
 
   @override
   void dispose() {
@@ -36,7 +38,32 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
     _deliveryTimeController.dispose();
     _phoneController.dispose();
     _blockController.dispose();
+    _deliveryFeeController.dispose();
+    _ratingController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isSeller) {
+      _prefillSeller();
+    }
+  }
+
+  Future<void> _prefillSeller() async {
+    try {
+      final seller = await _supabaseService.getCurrentSellerProfile();
+      if (seller != null) {
+        _nameController.text = seller['display_name']?.toString() ?? '';
+        _bioController.text = seller['description']?.toString() ?? '';
+        _deliveryTimeController.text = seller['delivery_time']?.toString() ?? '';
+        _blockController.text = seller['block']?.toString() ?? '';
+        _deliveryFeeController.text = (seller['delivery_fee']?.toString() ?? '0');
+        _ratingController.text = (seller['rating']?.toString() ?? '0');
+        if (mounted) setState(() {});
+      }
+    } catch (_) {}
   }
 
   @override
@@ -192,6 +219,34 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 20),
+                  _buildDarkTextField(
+                    controller: _deliveryFeeController,
+                    label: 'Delivery Fee (Rp)',
+                    hint: 'e.g., 5000',
+                    icon: Icons.delivery_dining,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Please enter fee';
+                      final v = double.tryParse(value.replaceAll(',', '.'));
+                      if (v == null) return 'Invalid number';
+                      if (v < 0) return 'Must be >= 0';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildDarkTextField(
+                    controller: _ratingController,
+                    label: 'Rating (0-5)',
+                    hint: 'e.g., 4.8',
+                    icon: Icons.star_rate,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Please enter rating';
+                      final v = double.tryParse(value.replaceAll(',', '.'));
+                      if (v == null) return 'Invalid number';
+                      if (v < 0 || v > 5) return '0 - 5 only';
+                      return null;
+                    },
+                  ),
                 ],
                 const SizedBox(height: 50),
 
@@ -261,8 +316,23 @@ class _CreateSellerProfilePageState extends State<CreateSellerProfilePage> {
       String message;
       if (widget.isSeller) {
         final deliveryTime = _deliveryTimeController.text;
-        message =
-            'Seller profile saved! Name: $name, Block: $block, Delivery: $deliveryTime';
+        final deliveryFee = double.tryParse(_deliveryFeeController.text.replaceAll(',', '.')) ?? 0.0;
+        final rating = double.tryParse(_ratingController.text.replaceAll(',', '.')) ?? 0.0;
+        // Save to Supabase
+        final uid = _supabaseService.getCurrentUser()?.id;
+        if (uid != null) {
+          _supabaseService.updateSellerProfile(
+            sellerId: uid,
+            displayName: name,
+            block: block,
+            description: _bioController.text,
+            deliveryTime: deliveryTime,
+            deliveryFee: deliveryFee,
+            rating: rating,
+            isOnline: true,
+          );
+        }
+        message = 'Seller profile saved!';
       } else {
         message = 'Profile saved! Name: $name, Phone: $phone, Block: $block';
       }

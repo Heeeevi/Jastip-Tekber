@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_2/screens/favorites_screen.dart';
+import 'package:flutter_application_2/services/supabase_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'order_detail_screen.dart';
@@ -13,30 +14,37 @@ class OrdersScreen extends StatefulWidget {
 
 class _OrdersScreenState extends State<OrdersScreen> {
   int currentIndex = 1; // Orders tab
+  final _svc = SupabaseService();
+  List<Map<String, dynamic>> _orders = const [];
+  bool _loading = true;
+  String? _error;
 
-  final List<Map<String, dynamic>> orders = const [
-    {
-      'name': 'Alan Walker',
-      'desc': 'Rame, Es Teh...',
-      'status': 'Menuju restoran',
-      'price': 25000,
-      'avatar': 'assets/images/zhongli.jpeg',
-    },
-    {
-      'name': 'John Alex',
-      'desc': 'Bakso, Pecel',
-      'status': 'Resto menyiapkan pesanan',
-      'price': 20000,
-      'avatar': 'assets/images/diluc.jpeg',
-    },
-    {
-      'name': 'Alex',
-      'desc': 'Kebab',
-      'status': 'Menuju titik antar',
-      'price': 10000,
-      'avatar': 'assets/images/kaeya.jpeg',
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final data = await _svc.fetchActiveOrders();
+      setState(() {
+        _orders = data;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      setState(() {
+        _loading = false;
+      });
     }
-  ];
+  }
 
   void _onBottomTap(int index) {
     if (index == currentIndex) return;
@@ -84,11 +92,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Widget _orderTile(Map<String, dynamic> o) {
+    final seller = o['sellers'] as Map<String, dynamic>?;
+    final name = seller?['display_name']?.toString() ?? 'Seller';
+    final status = o['status']?.toString() ?? 'pending';
+    final price = (o['total_price'] as num?)?.toInt() ?? 0;
+  // sellerId not used directly here (kept via order map for detail)
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => OrderDetailScreen(order: o)),
+          MaterialPageRoute(
+            builder: (_) => OrderDetailScreen(order: o),
+          ),
         );
       },
       child: Container(
@@ -100,15 +115,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ),
         child: Row(
           children: [
-            CircleAvatar(radius: 24, backgroundImage: AssetImage(o['avatar'] as String)),
+            const CircleAvatar(radius: 24, backgroundImage: AssetImage('assets/images/seller1.jpg')),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(o['name'] as String, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
-                  Text(o['desc'] as String, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(o['delivery_address']?.toString() ?? '-', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -116,13 +131,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       color: const Color(0xFF4C89C6),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(o['status'] as String, style: const TextStyle(fontSize: 11)),
+                    child: Text(status, style: const TextStyle(fontSize: 11)),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Text('Rp${(o['price'] as int).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text('Rp$price', style: const TextStyle(fontWeight: FontWeight.w700)),
           ],
         ),
       ),
@@ -133,11 +148,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _topBar(),
-      body: ListView.builder(
-        padding: const EdgeInsets.only(top: 4, bottom: 24),
-        itemCount: orders.length,
-        itemBuilder: (_, i) => _orderTile(orders[i]),
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text('Error: $_error'))
+              : RefreshIndicator(
+                  onRefresh: _loadOrders,
+                  child: _orders.isEmpty
+                      ? const ListTile(title: Text('No active orders'))
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 4, bottom: 24),
+                          itemCount: _orders.length,
+                          itemBuilder: (_, i) => _orderTile(_orders[i]),
+                        ),
+                ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: _onBottomTap,

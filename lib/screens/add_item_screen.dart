@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_application_2/services/supabase_service.dart';
 
 class AddItemPage extends StatefulWidget {
   const AddItemPage({super.key});
@@ -17,8 +18,11 @@ class _AddItemPageState extends State<AddItemPage> {
   final TextEditingController _kataKunci1Ctrl = TextEditingController();
   final TextEditingController _kataKunci2Ctrl = TextEditingController();
   final TextEditingController _kataKunci3Ctrl = TextEditingController();
+  final List<String> _categories = ['Fast Food','Noodles','Desserts','Drinks'];
+  String? _selectedCategory;
 
   bool _isAvailable = true;
+  final _svc = SupabaseService();
 
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -183,6 +187,28 @@ class _AddItemPageState extends State<AddItemPage> {
                     ],
 
                     const SizedBox(height: 20),
+                    // Category Selection
+                    const Text(
+                      'Kategori',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _categories.map((c) {
+                        final selected = _selectedCategory == c;
+                        return ChoiceChip(
+                          label: Text(c),
+                          selected: selected,
+                          onSelected: (_) => setState(() => _selectedCategory = c),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
 
                     // Toko
                     const Text(
@@ -297,14 +323,7 @@ class _AddItemPageState extends State<AddItemPage> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Item berhasil ditambahkan!'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        },
+                        onPressed: _submit,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF5F63FF),
                           shape: RoundedRectangleBorder(
@@ -360,5 +379,66 @@ class _AddItemPageState extends State<AddItemPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _submit() async {
+    final name = _namaProdukCtrl.text.trim();
+    final toko = _tokoCtrl.text.trim();
+    final priceStr = _hargaCtrl.text.trim();
+    final kw1 = _kataKunci1Ctrl.text.trim();
+    final kw2 = _kataKunci2Ctrl.text.trim();
+    final kw3 = _kataKunci3Ctrl.text.trim();
+
+    if (name.isEmpty || priceStr.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama produk dan harga wajib diisi'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    double? price;
+    try {
+      price = double.parse(priceStr);
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Harga tidak valid'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final user = _svc.getCurrentUser();
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Harus login terlebih dahulu'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    // sellerId is the same as profiles.id (user.id) for seller accounts
+    final sellerId = user.id;
+    final keywords = [kw1, kw2, kw3].where((e) => e.isNotEmpty).join(';');
+
+    try {
+      // Ensure seller profile exists (auto-create if missing) using toko or fallback name
+      await _svc.ensureSellerProfile(displayName: toko.isNotEmpty ? toko : 'My Store', block: 'A');
+      await _svc.createProduct(
+        sellerId: sellerId,
+        name: name,
+        price: price,
+        description: toko.isNotEmpty ? toko : null,
+        category: _selectedCategory,
+        imageUrl: null,
+        keywords: keywords.isNotEmpty ? keywords : null,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Item berhasil ditambahkan!'), backgroundColor: Colors.green),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal tambah item: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 }

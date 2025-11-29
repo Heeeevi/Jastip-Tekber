@@ -62,7 +62,7 @@ class SupabaseService {
   /// Get user profile
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     final data = await supabase
-        .from('users')
+        .from('profiles')
         .select()
         .eq('id', userId)
         .maybeSingle();
@@ -75,7 +75,8 @@ class SupabaseService {
     String? fullName,
     String? phone,
     String? avatarUrl,
-    String? block,
+    String? domBlock,
+    String? roomNumber,
   }) async {
     final updates = <String, dynamic>{
       'updated_at': DateTime.now().toIso8601String(),
@@ -84,9 +85,10 @@ class SupabaseService {
     if (fullName != null) updates['full_name'] = fullName;
     if (phone != null) updates['phone'] = phone;
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
-    if (block != null) updates['block'] = block;
+    if (domBlock != null) updates['dom_block'] = domBlock;
+    if (roomNumber != null) updates['room_number'] = roomNumber;
 
-    await supabase.from('users').update(updates).eq('id', userId);
+    await supabase.from('profiles').update(updates).eq('id', userId);
   }
 
   // ==================== SELLERS ====================
@@ -128,6 +130,8 @@ class SupabaseService {
     required String block,
     String? description,
     String? deliveryTime,
+    double? deliveryFee,
+    double? rating,
   }) async {
     final data = await supabase
         .from('sellers')
@@ -138,7 +142,8 @@ class SupabaseService {
           'description': description,
           'delivery_time': deliveryTime,
           'is_online': true,
-          'rating': 0.0,
+          'delivery_fee': deliveryFee ?? 0.0,
+          'rating': rating ?? 0.0,
           'total_orders': 0,
         })
         .select()
@@ -155,6 +160,8 @@ class SupabaseService {
     String? description,
     String? deliveryTime,
     bool? isOnline,
+    double? deliveryFee,
+    double? rating,
   }) async {
     final updates = <String, dynamic>{};
 
@@ -163,6 +170,8 @@ class SupabaseService {
     if (description != null) updates['description'] = description;
     if (deliveryTime != null) updates['delivery_time'] = deliveryTime;
     if (isOnline != null) updates['is_online'] = isOnline;
+    if (deliveryFee != null) updates['delivery_fee'] = deliveryFee;
+    if (rating != null) updates['rating'] = rating;
 
     await supabase.from('sellers').update(updates).eq('id', sellerId);
   }
@@ -186,14 +195,69 @@ class SupabaseService {
         .from('orders')
         .select('''
           *,
-          sellers(display_name, rating, block),
-          profiles!orders_seller_id_fkey(avatar_url)
+          sellers(display_name, rating, block)
         ''')
         .eq('buyer_id', userId)
         .inFilter('status', ['pending', 'confirmed', 'preparing', 'ready'])
         .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Fetch orders for the current seller filtered by statuses
+  Future<List<Map<String, dynamic>>> fetchSellerOrders({List<String>? statuses}) async {
+    final sellerId = supabase.auth.currentUser?.id;
+    if (sellerId == null) return [];
+    var builder = supabase.from('orders').select('''
+        *,
+        buyer:profiles!orders_buyer_id_fkey(full_name, dom_block, room_number)
+      ''').eq('seller_id', sellerId);
+    if (statuses != null && statuses.isNotEmpty) {
+      builder = builder.inFilter('status', statuses);
+    }
+    final data = await builder.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Fetch items for an order (join products)
+  Future<List<Map<String, dynamic>>> fetchOrderItems(int orderId) async {
+    final data = await supabase
+        .from('order_items')
+        .select('''
+          *,
+          product:products(id,name,price,category,image_url)
+        ''')
+        .eq('order_id', orderId)
+        .order('id');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Ensure conversation exists between current user and seller (returns conversation map)
+  Future<Map<String, dynamic>> ensureConversationWithSeller(String sellerId) async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not logged in');
+    // Find existing
+    final existing = await supabase
+        .from('conversations')
+        .select()
+        .or('and(participant_1_id.eq.$userId,participant_2_id.eq.$sellerId),and(participant_1_id.eq.$sellerId,participant_2_id.eq.$userId)')
+        .maybeSingle();
+    if (existing != null) return existing;
+    // Create new
+    final created = await supabase
+        .from('conversations')
+        .insert({
+          'participant_1_id': userId,
+          'participant_2_id': sellerId,
+        })
+        .select()
+        .single();
+    return created;
+  }
+
+  /// Update order status (seller side)
+  Future<void> updateOrderStatus({required int orderId, required String status}) async {
+    await supabase.from('orders').update({'status': status}).eq('id', orderId);
   }
 
   /// Count active orders untuk badge
@@ -214,28 +278,124 @@ class SupabaseService {
   Future<Map<String, dynamic>> createOrder({
     required String sellerId,
     required double totalPrice,
-    double? deliveryFee,
     String? deliveryAddress,
+    String? deliveryTime,
     String? notes,
   }) async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
+    Map<String, dynamic> payload = {
+      'buyer_id': userId,
+      'seller_id': sellerId,
+      'total_price': totalPrice,
+      'status': 'pending',
+      'notes': notes,
+    };
+    if (deliveryAddress != null) payload['delivery_address'] = deliveryAddress;
+    if (deliveryTime != null) payload['delivery_time'] = deliveryTime;
+
+    dynamic data;
+    try {
+      data = await supabase.from('orders').insert(payload).select().single();
+    } catch (e) {
+      // Fallback: if server schema doesn't have delivery_time/address yet, retry without them
+      final msg = e.toString();
+      final maybeSchemaCache = msg.contains("Could not find the 'delivery_time' column") || msg.contains('schema cache');
+      if (maybeSchemaCache) {
+        payload.remove('delivery_time');
+        payload.remove('delivery_address');
+        data = await supabase.from('orders').insert(payload).select().single();
+      } else {
+        rethrow;
+      }
+    }
+
+    return data;
+  }
+
+  /// Fetch current user's active orders filtered by a seller
+  Future<List<Map<String, dynamic>>> fetchActiveOrdersBySeller(String sellerId) async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return [];
     final data = await supabase
         .from('orders')
+        .select('''
+          *,
+          sellers(display_name, rating, block),
+          order_items(*, product:products(id,name,price))
+        ''')
+        .eq('buyer_id', userId)
+        .eq('seller_id', sellerId)
+        .inFilter('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Add an item to an order
+  Future<Map<String, dynamic>> addOrderItem({
+    required int orderId,
+    required int productId,
+    required int quantity,
+    required double price,
+  }) async {
+    final item = await supabase
+        .from('order_items')
         .insert({
-          'buyer_id': userId,
-          'seller_id': sellerId,
-          'total_price': totalPrice,
-          'delivery_fee': deliveryFee ?? 0,
-          'status': 'pending',
-          'delivery_address': deliveryAddress,
-          'notes': notes,
+          'order_id': orderId,
+          'product_id': productId,
+          'quantity': quantity,
+          'price': price,
         })
         .select()
         .single();
+    return item;
+  }
 
-    return data;
+  /// Re-order from a previous order: duplicates items under a new order
+  Future<Map<String, dynamic>> reorder({
+    required int previousOrderId,
+    required String sellerId,
+    String? deliveryAddress,
+    String? deliveryTime,
+    String? notes,
+  }) async {
+    // Fetch previous items
+    final prevItems = await supabase
+        .from('order_items')
+        .select('product_id, quantity, price')
+        .eq('order_id', previousOrderId);
+
+    if (prevItems.isEmpty) {
+      throw Exception('No items to reorder');
+    }
+
+    // Compute total price
+    double total = 0;
+    for (final it in prevItems) {
+      total += (it['price'] as num).toDouble() * (it['quantity'] as int);
+    }
+
+    // Create the new order
+    final newOrder = await createOrder(
+      sellerId: sellerId,
+      totalPrice: total,
+      deliveryAddress: deliveryAddress,
+      deliveryTime: deliveryTime,
+      notes: notes,
+    );
+
+    // Add items to the new order
+    for (final it in prevItems) {
+      await addOrderItem(
+        orderId: newOrder['id'] as int,
+        productId: it['product_id'] as int,
+        quantity: it['quantity'] as int,
+        price: (it['price'] as num).toDouble(),
+      );
+    }
+
+    return newOrder;
   }
 
   // ==================== FAVORITES ====================
@@ -357,6 +517,35 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  /// Get products by category (global view for buyers) with seller embed
+  Future<List<Map<String, dynamic>>> getProductsByCategory(String category,{int limit = 20}) async {
+    final data = await supabase
+        .from('products')
+        .select('''
+          *,
+          sellers(display_name, block)
+        ''')
+        .eq('category', category)
+        .eq('is_available', true)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Get ALL products from all sellers (for buyer home dashboard)
+  Future<List<Map<String, dynamic>>> getAllProducts({int limit = 50}) async {
+    final data = await supabase
+        .from('products')
+        .select('''
+          *,
+          sellers(display_name, block, rating)
+        ''')
+        .eq('is_available', true)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
   /// Create product
   Future<Map<String, dynamic>> createProduct({
     required String sellerId,
@@ -384,6 +573,41 @@ class SupabaseService {
         .single();
 
     return data;
+  }
+
+  // ==================== SELLER HELPERS ====================
+
+  /// Get current user's seller profile (if exists)
+  Future<Map<String, dynamic>?> getCurrentSellerProfile() async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return null;
+    final data = await supabase.from('sellers').select().eq('id', uid).maybeSingle();
+    return data;
+  }
+
+  /// Ensure current user has a seller profile, create if missing
+  Future<Map<String, dynamic>> ensureSellerProfile({required String displayName, String? block, String? description, String? deliveryTime}) async {
+    await _ensureProfileExists();
+    final existing = await getCurrentSellerProfile();
+    if (existing != null) return existing;
+    return await createSellerProfile(
+      userId: supabase.auth.currentUser!.id,
+      displayName: displayName,
+      block: block ?? 'A',
+      description: description,
+      deliveryTime: deliveryTime,
+    );
+  }
+
+  /// Ensure profile row exists (fallback if trigger failed or legacy user)
+  Future<void> _ensureProfileExists() async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      await supabase.rpc('ensure_profile');
+    } catch (_) {
+      // ignore if function not deployed yet
+    }
   }
 
   /// Update product

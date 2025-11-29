@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,12 +18,87 @@ class _HomeScreenState extends State<HomeScreen> {
     {'icon': Icons.cake, 'label': 'Desserts'},
     {'icon': Icons.local_bar, 'label': 'Drinks'},
   ];
-
-  final sellers = [
-    {'name': 'Alan Walker', 'block': 'A', 'open': true},
-    {'name': 'John Alex', 'block': 'C', 'open': true},
-    {'name': 'John Doe', 'block': 'D', 'open': false},
+  // Category browsing
+  final List<String> _categories = [
+    'Fast Food',
+    'Noodles',
+    'Desserts',
+    'Drinks',
   ];
+  String? _selectedCategory;
+  bool _loadingCategoryProducts = false;
+  List<Map<String, dynamic>> _categoryProducts = [];
+  String? _categoryError;
+
+  // Sellers fetched from Supabase
+  List<Map<String, dynamic>> sellers = [];
+  bool _loadingSellers = false;
+  List<Map<String, dynamic>> _activeOrders = [];
+  bool _loadingOrders = false;
+  // ALL Products from all sellers
+  List<Map<String, dynamic>> _allProducts = [];
+  bool _loadingAllProducts = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSellers();
+    _loadActiveOrders();
+    _loadAllProducts();
+  }
+
+  Future<void> _loadSellers() async {
+    setState(() => _loadingSellers = true);
+    try {
+      final data = await SupabaseService().fetchSellers(limit: 10);
+      if (mounted) setState(() => sellers = data);
+    } catch (_) {
+      if (mounted) setState(() => sellers = []);
+    } finally {
+      if (mounted) setState(() => _loadingSellers = false);
+    }
+  }
+
+  Future<void> _loadActiveOrders() async {
+    setState(() => _loadingOrders = true);
+    try {
+      final data = await SupabaseService().fetchActiveOrders();
+      if (mounted) setState(() => _activeOrders = data);
+    } catch (_) {
+      if (mounted) setState(() => _activeOrders = []);
+    } finally {
+      if (mounted) setState(() => _loadingOrders = false);
+    }
+  }
+
+  Future<void> _loadAllProducts() async {
+    setState(() => _loadingAllProducts = true);
+    try {
+      final data = await SupabaseService().getAllProducts(limit: 50);
+      if (mounted) setState(() => _allProducts = data);
+    } catch (_) {
+      if (mounted) setState(() => _allProducts = []);
+    } finally {
+      if (mounted) setState(() => _loadingAllProducts = false);
+    }
+  }
+
+  Future<void> _loadCategoryProducts(String category) async {
+    setState(() {
+      _selectedCategory = category;
+      _loadingCategoryProducts = true;
+      _categoryError = null;
+    });
+    try {
+      final products = await SupabaseService().getProductsByCategory(category);
+      _categoryProducts = products;
+    } catch (e) {
+      _categoryError = 'Failed to load products: $e';
+    } finally {
+      _loadingCategoryProducts = false;
+      if (mounted) setState(() {});
+    }
+  }
 
   Widget _buildHeader() {
     return Row(
@@ -138,8 +214,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-      // Sign out from Supabase (akan diimplementasi)
-      // await SupabaseService().signOut();
+  // Sign out from Supabase
+  await SupabaseService().signOut();
 
       // Navigate to login screen
       Navigator.pushNamedAndRemoveUntil(
@@ -179,9 +255,81 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _pill('Buyer', true, null), // Active di Buyer mode
           const SizedBox(width: 4),
-          _pill('Seller', false, () {
-            // Navigasi ke Dashboard Seller menggunakan pushReplacement
-            Navigator.pushReplacementNamed(context, '/seller-dashboard');
+          _pill('Seller', false, () async {
+            // Check if seller profile exists; if not prompt to create
+            final service = SupabaseService();
+            final existing = await service.getCurrentSellerProfile();
+            if (existing == null) {
+              String name = '';
+              String block = 'A';
+              final created = await showDialog<bool>(
+                context: context,
+                builder: (ctx) {
+                  return AlertDialog(
+                    title: const Text('Create Seller Profile'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: 'Store Name',
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          style: const TextStyle(color: Colors.black),
+                          onChanged: (v) => name = v.trim(),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: block,
+                          decoration: const InputDecoration(labelText: 'Block'),
+                          items: ['A','B','C','D','E']
+                              .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                              .toList(),
+                          onChanged: (v) => block = v ?? 'A',
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (name.isEmpty) return;
+                          Navigator.pop(ctx, true);
+                        },
+                        child: const Text('Create'),
+                      )
+                    ],
+                  );
+                },
+              );
+              if (created == true) {
+                try {
+                  await service.ensureSellerProfile(displayName: name, block: block);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Seller profile "$name" created.')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed: $e')),
+                    );
+                  }
+                  return; // Abort navigation on failure
+                }
+              } else {
+                return; // Cancelled
+              }
+            }
+            // Navigate to seller dashboard
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/seller-dashboard');
+            }
           }),
         ],
       ),
@@ -240,12 +388,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _sellerCard(Map<String, dynamic> seller) {
-    final open = seller['open'] as bool;
+    final open = (seller['is_online'] as bool?) ?? false;
+    final displayName = (seller['display_name'] as String?) ?? (seller['name'] as String? ?? 'Seller');
+    final block = (seller['block'] as String?) ?? '-';
     // MODIFIKASI: Menambahkan GestureDetector untuk navigasi ke Profil Seller
     return GestureDetector(
       onTap: () {
-        // Membuka halaman seller_profile_page.dart
-        Navigator.pushNamed(context, '/seller-profile');
+        // Buka halaman profil toko dengan data seller yang dipilih
+        print('[HomeScreen] Seller card tapped: ${seller['display_name']}');
+        print('[HomeScreen] Seller ID: ${seller['id']}');
+        print('[HomeScreen] Seller data: $seller');
+        Navigator.pushNamed(
+          context,
+          '/seller-profile',
+          arguments: {
+            'seller': seller,
+            'seller_id': seller['id']?.toString(),
+          },
+        );
       },
       child: Container(
         width: 120,
@@ -265,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              seller['name'],
+              displayName,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w600),
@@ -284,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Blok ${seller['block']}',
+              'Blok $block',
               style: const TextStyle(fontSize: 10, color: Colors.white70),
             ),
             const Spacer(),
@@ -292,8 +452,17 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () {
-                  // Navigasi ke profil seller
-                  Navigator.pushNamed(context, '/seller-profile');
+                  // Navigasi ke profil seller (kirim argumen juga)
+                  print('[HomeScreen] Follow button tapped: ${seller['display_name']}');
+                  print('[HomeScreen] Seller ID: ${seller['id']}');
+                  Navigator.pushNamed(
+                    context,
+                    '/seller-profile',
+                    arguments: {
+                      'seller': seller,
+                      'seller_id': seller['id']?.toString(),
+                    },
+                  );
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white24),
@@ -333,6 +502,38 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _activeOrderCard() {
+    if (_loadingOrders) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(16),
+        child: CircularProgressIndicator(),
+      ));
+    }
+    if (_activeOrders.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1F26),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'Active Purchase Orders',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'No orders here — want to order now?',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+      );
+    }
+    final o = _activeOrders.first;
+    final seller = o['sellers'] as Map<String, dynamic>?;
+    final sellerName = seller?['display_name']?.toString() ?? 'Seller';
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1C1F26),
@@ -421,9 +622,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'Bakso Keputih',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                Text(
+                  sellerName,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 const Row(
@@ -442,17 +643,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Navigasi ke seller profile untuk order
-                      Navigator.pushNamed(context, '/seller-profile');
-                    },
+                    onPressed: () { Navigator.pushReplacementNamed(context, '/orders'); },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 26,
                         vertical: 12,
                       ),
                     ),
-                    child: const Text('Order'),
+                    child: const Text('View'),
                   ),
                 ),
               ],
@@ -498,16 +696,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SizedBox(
             height: 210,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: sellers.length,
-              padding: const EdgeInsets.only(left: 4),
-              itemBuilder: (c, i) => _sellerCard(sellers[i]),
-            ),
+            child: _loadingSellers
+                ? const Center(child: CircularProgressIndicator())
+                : (sellers.isEmpty
+                    ? const Center(child: Text('No sellers yet'))
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: sellers.length,
+                        padding: const EdgeInsets.only(left: 4),
+                        itemBuilder: (c, i) => _sellerCard(sellers[i]),
+                      )),
           ),
           const SizedBox(height: 28),
           _categoriesRow(),
           const SizedBox(height: 32),
+          // ALL PRODUCTS SECTION (Main listing dari semua seller)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                'Available Items from Sellers',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildAllProductsSection(),
+          const SizedBox(height: 28),
+          _buildCategorySection(),
           const Text(
             'Active Purchase Orders',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -518,6 +734,240 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildAllProductsSection() {
+    if (_loadingAllProducts) {
+      return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+    }
+    if (_allProducts.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('No items available yet. Sellers can add products from Seller Dashboard.', style: TextStyle(color: Colors.white70)),
+      );
+    }
+    return SizedBox(
+      height: 240,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _allProducts.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (_, idx) {
+          final p = _allProducts[idx];
+          final seller = p['sellers'] as Map<String, dynamic>?;
+          final sellerName = seller?['display_name'] ?? 'Seller';
+          final rating = (seller?['rating'] as num?)?.toDouble() ?? 0.0;
+          return GestureDetector(
+            onTap: () {
+              // Quick order dengan delivery prompt
+              _createQuickOrder(p);
+            },
+            child: Container(
+              width: 180,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1F26),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product image placeholder
+                  Container(
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade700,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.fastfood, size: 40, color: Colors.white54),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    p['name'] ?? 'Item',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.store, size: 12, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          sellerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (rating > 0) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 12, color: Colors.amber),
+                        const SizedBox(width: 2),
+                        Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                      ],
+                    ),
+                  ],
+                  const Spacer(),
+                  Text(
+                    'Rp ${(p['price'] ?? 0).toString()}',
+                    style: const TextStyle(color: Color(0xFF5F63D9), fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _createQuickOrder(p),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5F63D9),
+                        minimumSize: const Size(double.infinity, 32),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      child: const Text('Order Now', style: TextStyle(fontSize: 12)),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategorySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        const Text(
+          'Browse by Category',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: _categories.map((c) {
+            final selected = c == _selectedCategory;
+            return ChoiceChip(
+              label: Text(c),
+              selected: selected,
+              onSelected: (_) => _loadCategoryProducts(c),
+            );
+          }).toList(),
+        ),
+        if (_selectedCategory != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            '$_selectedCategory Products',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          if (_loadingCategoryProducts)
+            const Center(child: CircularProgressIndicator())
+          else if (_categoryError != null)
+            Text(_categoryError!, style: const TextStyle(color: Colors.red))
+          else if (_categoryProducts.isEmpty)
+            const Text('No products found in this category.')
+          else
+            SizedBox(
+              height: 170,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categoryProducts.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, idx) {
+                  final p = _categoryProducts[idx];
+                  final seller = p['sellers'] as Map<String, dynamic>?;
+                  return Container(
+                    width: 160,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p['name'] ?? 'Unnamed',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          seller != null ? seller['display_name'] ?? 'Seller' : 'Seller',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Rp ${(p['price'] ?? 0).toString()}',
+                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Quick order create workflow (single item order)
+                            _createQuickOrder(p);
+                          },
+                          style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 32)),
+                          child: const Text('Order'),
+                        )
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+        ]
+      ],
+    );
+  }
+
+  Future<void> _createQuickOrder(Map<String, dynamic> product) async {
+    try {
+      final order = await SupabaseService().createOrder(
+        sellerId: product['seller_id'].toString(),
+        totalPrice: (product['price'] as num?)?.toDouble() ?? 0.0,
+      );
+      await SupabaseService().addOrderItem(
+        orderId: order['id'],
+        productId: product['id'],
+        quantity: 1,
+        price: (product['price'] as num?)?.toDouble() ?? 0.0,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Order created!')),
+        );
+        _loadActiveOrders(); // refresh active orders
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create order: $e')),
+        );
+      }
+    }
   }
 
   BottomNavigationBar _bottomNav() {
@@ -538,13 +988,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.pushReplacementNamed(context, '/favorites');
             break;
           case 3:
-            // Placeholder Chat - Tampilkan snackbar
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Chat feature coming soon!'),
-                duration: Duration(seconds: 2),
-              ),
-            );
+            // Pindah ke ChatScreen (hindari replacement untuk mengurangi lag)
+            Navigator.pushNamed(context, '/chat');
             break;
         }
       },

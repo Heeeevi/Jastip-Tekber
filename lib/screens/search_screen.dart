@@ -213,7 +213,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
 
-            ...filteredResults.map((item) => _buildResultCard(item)).toList(),
+            ...filteredResults.map((item) => _buildResultCard(item)),
           ],
         ),
       ),

@@ -8,6 +8,10 @@ import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/orders_screen.dart';
 import 'screens/add_item_screen.dart';
+import 'screens/search_screen.dart';
+import 'screens/order_status_screen.dart';
+import 'screens/menu_chat.dart';
+import 'screens/chat_conversation_screen.dart';
 
 // --- IMPORT DARI LOCAL (FITUR SELLER YANG ANDA BUAT) ---
 import 'screens/create_seller_profile_page.dart';
@@ -87,7 +91,7 @@ class JasTipApp extends StatelessWidget {
         ),
       ),
 
-      initialRoute: '/',
+  initialRoute: '/login',
 
       onGenerateRoute: (settings) {
         // Handle routes dengan parameter
@@ -96,6 +100,23 @@ class JasTipApp extends StatelessWidget {
           final isSeller = args?['isSeller'] ?? false;
           return MaterialPageRoute(
             builder: (_) => CreateSellerProfilePage(isSeller: isSeller),
+            settings: settings, // Pass settings to preserve arguments
+          );
+        }
+
+        // Handle seller-profile route with arguments
+        if (settings.name == '/seller-profile') {
+          return MaterialPageRoute(
+            builder: (_) => const SellerProfilePage(),
+            settings: settings, // IMPORTANT: Pass settings to preserve arguments!
+          );
+        }
+
+        // Handle chat-conversation route with arguments
+        if (settings.name == '/chat-conversation') {
+          return MaterialPageRoute(
+            builder: (_) => const ChatConversationScreen(),
+            settings: settings, // Pass settings to preserve arguments
           );
         }
 
@@ -107,9 +128,11 @@ class JasTipApp extends StatelessWidget {
           '/home': (_) => const HomeScreen(),
           '/orders': (_) => const OrdersScreen(),
           '/add-item': (_) => const AddItemPage(),
-          '/seller-profile': (_) => const SellerProfilePage(),
           '/seller-dashboard': (_) => const SellerDashboardScreen(),
           '/favorites': (_) => const FavoritesScreen(),
+          '/search': (_) => const SearchScreen(),
+          '/order-status': (_) => const OrderStatusScreen(),
+          '/chat': (_) => const ChatScreen(),
         };
 
         final builder = routes[settings.name];

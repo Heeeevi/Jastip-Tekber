@@ -253,16 +253,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (response.user != null) {
-        // Sukses! Langsung auto sign in dan redirect ke home
+        // Sukses! Kembali ke Sign In untuk login (tanpa verifikasi email)
         _showSnackBar(
-          'Welcome, $fullName! Account created successfully.',
+          'Account created. Please sign in to continue.',
           Colors.green,
         );
 
-        // Langsung navigate ke home (sudah auto signed in)
-        Future.delayed(const Duration(milliseconds: 500), () {
+        Future.delayed(const Duration(milliseconds: 600), () {
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
+            Navigator.pushReplacementNamed(context, '/login');
           }
         });
       } else {
