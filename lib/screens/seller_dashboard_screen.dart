@@ -499,42 +499,151 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
     );
   }
 
-  Widget _buildStatusButtons(int orderId, String status) {
-    if (['completed','cancelled'].contains(status)) {
-      final color = status=='completed'? kSuccessColor : kErrorColor;
-      return SizedBox(width: double.infinity, child: ElevatedButton(
-        onPressed: (){},
-        style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-        child: Text(status, style: const TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
-      ));
-    }
-    // For new and preparing statuses provide progression buttons
-    List<Map<String,String>> transitions = [];
-    if (['pending','confirmed'].contains(status)) {
-      transitions = [
-        {'label':'Confirm','to':'confirmed'},
-        {'label':'Start','to':'preparing'},
-        {'label':'Cancel','to':'cancelled'},
-      ];
-    } else {
-      transitions = [
-        {'label':'Ready','to':'ready'},
-        {'label':'Deliver','to':'delivering'},
-        {'label':'Complete','to':'completed'},
-        {'label':'Cancel','to':'cancelled'},
-      ];
-    }
-    return Wrap(spacing:8, runSpacing:8, children: transitions.map((t){
-      final isDanger = t['to']=='cancelled';
-      return ElevatedButton(
-        onPressed: () => _changeOrderStatus(orderId, t['to']!),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDanger? kErrorColor : kPrimaryAccent,
-          padding: const EdgeInsets.symmetric(horizontal:14, vertical:10),
+// GANTI FUNGSI INI
+  Widget _buildStatusButtons(int orderId, String currentStatus) {
+    // 1. Tampilan jika order sudah selesai atau dibatalkan (Final State)
+    if (['completed', 'cancelled'].contains(currentStatus)) {
+      final isSuccess = currentStatus == 'completed';
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSuccess ? kSuccessColor.withOpacity(0.2) : kErrorColor.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSuccess ? kSuccessColor : kErrorColor),
         ),
-        child: Text(t['label']!, style: const TextStyle(color: Colors.white,fontSize:12)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle : Icons.cancel,
+              color: isSuccess ? kSuccessColor : kErrorColor,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isSuccess ? 'ORDER COMPLETED' : 'ORDER CANCELLED',
+              style: TextStyle(
+                color: isSuccess ? kSuccessColor : kErrorColor,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
       );
-    }).toList());
+    }
+
+    // 2. Tentukan Langkah Selanjutnya (Sequential Logic)
+    String? nextStatus;
+    String actionLabel = '';
+    Color buttonColor = kPrimaryAccent; // Default Ungu
+
+    switch (currentStatus) {
+      case 'pending':
+        nextStatus = 'confirmed';
+        actionLabel = 'Terima Pesanan'; // Confirm
+        break;
+      case 'confirmed':
+        nextStatus = 'preparing';
+        actionLabel = 'Mulai Masak/Siapkan'; // Start
+        break;
+      case 'preparing':
+        nextStatus = 'ready';
+        actionLabel = 'Pesanan Siap (Ready)'; // Ready
+        buttonColor = Colors.orange; // Pembeda warna
+        break;
+      case 'ready':
+        nextStatus = 'delivering';
+        actionLabel = 'Antar Pesanan (Deliver)'; // Deliver
+        buttonColor = Colors.blue;
+        break;
+      case 'delivering':
+        nextStatus = 'completed';
+        actionLabel = 'Selesaikan Pesanan'; // Complete
+        buttonColor = kSuccessColor;
+        break;
+      default:
+        nextStatus = null;
+    }
+
+    // 3. Render Tampilan Status Bar & Tombol
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // A. Tampilan Status Saat Ini (Mirip Dropdown tapi Read-only)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: kTextGrey, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Status: ${currentStatus.toUpperCase()}',
+                style: const TextStyle(color: kTextWhite, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+
+        // B. Tombol Aksi (Next Step & Cancel)
+        Row(
+          children: [
+            // Tombol Utama (Next Step)
+            if (nextStatus != null)
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _changeOrderStatus(orderId, nextStatus!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: buttonColor,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    actionLabel,
+                    style: const TextStyle(
+                      color: Colors.white, 
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13
+                    ),
+                  ),
+                ),
+              ),
+
+            // Spacer jika ada tombol next
+            if (nextStatus != null) const SizedBox(width: 10),
+
+            // Tombol Cancel (Merah)
+            // Hanya muncul jika status belum 'delivering' (supaya tidak cancel saat di jalan)
+            if (currentStatus != 'delivering')
+              SizedBox(
+                width: 100, // Lebar fixed agar rapi
+                child: OutlinedButton(
+                  onPressed: () => _changeOrderStatus(orderId, 'cancelled'),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: kErrorColor),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text(
+                    'Tolak',
+                    style: TextStyle(color: kErrorColor, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 
   Widget _buildProductsList() {

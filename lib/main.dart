@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/login_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/all_sellers_screen.dart';
 import 'screens/orders_screen.dart';
 import 'screens/add_item_screen.dart';
 import 'screens/search_screen.dart';
@@ -126,6 +127,7 @@ class JasTipApp extends StatelessWidget {
           '/login': (_) => const LoginScreen(),
           '/signup': (_) => const SignUpScreen(),
           '/home': (_) => const HomeScreen(),
+          '/all-sellers': (context) => const AllSellersScreen(),
           '/orders': (_) => const OrdersScreen(),
           '/add-item': (_) => const AddItemPage(),
           '/seller-dashboard': (_) => const SellerDashboardScreen(),

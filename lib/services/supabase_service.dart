@@ -802,4 +802,25 @@ class SupabaseService {
         .stream(primaryKey: ['id'])
         .eq('conversation_id', conversationId);
   }
+
+/// Cari produk berdasarkan keyword (mencari di kolom 'keywords' ATAU 'category')
+  Future<List<Map<String, dynamic>>> getProductsByKeyword(String tag) async {
+    try {
+      final response = await supabase
+          .from('products')
+          .select('''
+            *,
+            sellers:seller_id(display_name, rating, block)
+          ''') // join seller untuk info toko
+          .or('keywords.ilike.%$tag%, category.ilike.%$tag%') // Cek keyword ATAU category
+          .eq('is_available', true) 
+          .order('created_at', ascending: false);
+      
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching products by keyword: $e');
+      return [];
+    }
+  }
+
 }

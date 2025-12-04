@@ -212,7 +212,7 @@ class _AddItemPageState extends State<AddItemPage> {
 
                     // Toko
                     const Text(
-                      'Toko',
+                      'Description',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -283,7 +283,7 @@ class _AddItemPageState extends State<AddItemPage> {
                                   : Colors.grey[700],
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: Row(
+                            child: Stack(
                               children: [
                                 AnimatedPositioned(
                                   duration: const Duration(milliseconds: 200),
