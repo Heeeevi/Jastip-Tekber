@@ -15,7 +15,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   int currentIndex = 1; // Orders tab
   final _svc = SupabaseService();
-  List<Map<String, dynamic>> _orders = const [];
+  List<Map<String, dynamic>> _orders = [];
   bool _loading = true;
   String? _error;
 
@@ -77,7 +77,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        onPressed: () => Navigator.maybePop(context),
+        onPressed: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        },
         icon: const Icon(Icons.chevron_left),
       ),
       centerTitle: true,
@@ -92,7 +97,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Widget _orderTile(Map<String, dynamic> o) {
-    final seller = o['sellers'] as Map<String, dynamic>?;
+    final seller = (o['sellers'] is Map) ? o['sellers'] as Map<String, dynamic> : null;
     final name = seller?['display_name']?.toString() ?? 'Seller';
     final status = o['status']?.toString() ?? 'pending';
     final price = (o['total_price'] as num?)?.toInt() ?? 0;

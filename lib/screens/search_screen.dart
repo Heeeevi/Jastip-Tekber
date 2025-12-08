@@ -243,6 +243,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
+          physics: const BouncingScrollPhysics(), // <-- biar enak scrollnya
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
