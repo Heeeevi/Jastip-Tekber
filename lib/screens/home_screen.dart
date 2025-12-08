@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import '../services/supabase_service.dart';
+import 'orders_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -435,7 +437,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return TextField(
       readOnly: true,
       onTap: () {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Search coming soon')));
+         //ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Search coming soon')));
+         Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SearchScreen()),
+        );
       },
       decoration: InputDecoration(
         hintText: 'Mau makan apa hari ini?',

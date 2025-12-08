@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'home_screen.dart';
+import 'orders_screen.dart';
+import 'favorites_screen.dart';
+import 'chat.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -9,6 +13,29 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+
+  //TAMBAHAN — current index supaya sama seperti FavoritesScreen
+  int currentIndex = 0;
+
+  //TAMBAHAN — handler untuk navigator
+  void _onBottomTap(int index) {
+    if (index == currentIndex) return;
+
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, '/home');
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, '/orders');
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, '/favorites');
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, '/chat');
+        break;
+    }
+  }
 
   List<String> history = [
     "ayam geprek joder",
@@ -46,10 +73,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void search(String query) {
     setState(() {
-      filteredResults = results
-          .where((item) =>
-              item["name"].toLowerCase().contains(query.toLowerCase()))
-          .toList();
+      final q = query.toLowerCase();
+      filteredResults = results.where((item) {
+        final name = item["name"]?.toString().toLowerCase() ?? "";
+        return name.contains(q);
+      }).toList();
     });
   }
 
@@ -65,7 +93,11 @@ class _SearchScreenState extends State<SearchScreen> {
           color: const Color(0xFF5F63D9),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(text, style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500)),
+        child: Text(text,
+            style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.w500)),
       ),
     );
   }
@@ -81,7 +113,6 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image with status badge
           Stack(
             children: [
               Container(
@@ -99,14 +130,18 @@ class _SearchScreenState extends State<SearchScreen> {
                 top: 8,
                 right: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF5F63D9),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     item["closing"] ?? "Closes in 45 min",
-                    style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500),
                   ),
                 ),
               ),
@@ -115,20 +150,24 @@ class _SearchScreenState extends State<SearchScreen> {
                   bottom: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.blue,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
                       "Online",
-                      style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500),
                     ),
                   ),
                 ),
             ],
           ),
-          // Content
+
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -136,7 +175,10 @@ class _SearchScreenState extends State<SearchScreen> {
               children: [
                 Text(
                   item["name"] ?? "Restaurant",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white),
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -145,14 +187,16 @@ class _SearchScreenState extends State<SearchScreen> {
                     const SizedBox(width: 4),
                     Text(
                       "${item['rating'] ?? 4.8} | ${item['category'] ?? 'Food'}",
-                      style: const TextStyle(fontSize: 14, color: Colors.white70),
+                      style: const TextStyle(
+                          fontSize: 14, color: Colors.white70),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   "Delivery: ${item['delivery'] ?? '6:00 - 7:00 PM'}",
-                  style: const TextStyle(fontSize: 13, color: Colors.white54),
+                  style:
+                      const TextStyle(fontSize: 13, color: Colors.white54),
                 ),
               ],
             ),
@@ -182,9 +226,12 @@ class _SearchScreenState extends State<SearchScreen> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  style: const TextStyle(color: Colors.black),
+                  cursorColor: Colors.black,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     hintText: "Search seller or food...",
+                    hintStyle: TextStyle(color: Colors.black54),
                   ),
                   onChanged: search,
                 ),
@@ -199,51 +246,49 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // History Section
-            const Text("Riwayat pencarian", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+            const Text("Riwayat pencarian",
+                style: TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
+
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: history.map((h) => _buildHistoryItem(h)).toList(),
+              children:
+                  history.map((h) => _buildHistoryItem(h)).toList(),
             ),
 
             const SizedBox(height: 20),
             Text("Hasil pencarian ${filteredResults.length}",
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                style: const TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
 
-            ...filteredResults.map((item) => _buildResultCard(item)),
+            ...filteredResults
+                .map((item) => _buildResultCard(item)),
           ],
         ),
       ),
 
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.grey)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(Icons.home, "Home"),
-            _buildNavItem(Icons.receipt_long, "Orders"),
-            _buildNavItem(Icons.favorite_border, "Favorites"),
-            _buildNavItem(Icons.chat_bubble_outline, "Chat"),
-          ],
-        ),
+      //PENGGANTI BOTTOM BAR LAMA — SAMA PERSIS DENGAN FAVORITESSCREEN
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: currentIndex,
+        onTap: _onBottomTap,
+        backgroundColor: const Color(0xFF14171D),
+        selectedItemColor: const Color(0xFF5F63D9),
+        unselectedItemColor: Colors.white54,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long), label: "Orders"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.favorite), label: "Favorites"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline), label: "Chat"),
+        ],
       ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 28, color: const Color(0xFF5F63D9)),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF5F63D9), fontWeight: FontWeight.w500)),
-      ],
     );
   }
 }
