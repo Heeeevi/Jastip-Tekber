@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; 
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import 'search_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,7 +26,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Data List
   List<Map<String, dynamic>> _sellers = [];
-  List<Map<String, dynamic>> _feedProducts = []; // Ini List Utama (Active Orders)
+  List<Map<String, dynamic>> _feedProducts =
+      []; // Ini List Utama (Active Orders)
+
+  // State untuk quantity per product (key = product id)
+  final Map<int, int> _quantities = {};
 
   // Data Kategori Hardcode (Sesuai Desain)
   final categories = [
@@ -45,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String userRole = 'buyer';
 
- @override
+  @override
   void initState() {
     super.initState();
 
@@ -80,10 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     // Load sellers dan produk sekaligus
-    await Future.wait([
-      _loadSellers(),
-      _loadFeedProducts(),
-    ]);
+    await Future.wait([_loadSellers(), _loadFeedProducts()]);
   }
 
   Future<void> _loadSellers() async {
@@ -94,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .select()
           .order('rating', ascending: false) // Rating tertinggi di kiri
           .limit(5);
-          
+
       if (mounted) {
         setState(() {
           _sellers = List<Map<String, dynamic>>.from(data as List);
@@ -122,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final data = await query;
-      
+
       if (mounted) {
         setState(() {
           // Konversi aman untuk mencegah error TypeError
@@ -150,34 +151,55 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadFeedProducts(category: _selectedCategory);
   }
 
-  Future<void> _createQuickOrder(Map<String, dynamic> product) async {
+  Future<void> _createQuickOrder(
+    Map<String, dynamic> product,
+    int quantity,
+  ) async {
+    if (quantity <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least 1 item')),
+      );
+      return;
+    }
+
     try {
+      final price = (product['price'] as num?)?.toDouble() ?? 0.0;
+      final totalPrice = price * quantity;
+
       final order = await SupabaseService().createOrder(
         sellerId: product['seller_id'].toString(),
-        totalPrice: (product['price'] as num?)?.toDouble() ?? 0.0,
+        totalPrice: totalPrice,
       );
       await SupabaseService().addOrderItem(
         orderId: order['id'],
         productId: product['id'],
-        quantity: 1,
-        price: (product['price'] as num?)?.toDouble() ?? 0.0,
+        quantity: quantity,
+        price: price,
       );
+
+      // Reset quantity setelah order berhasil
+      setState(() {
+        _quantities[product['id']] = 1;
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order created successfully!')),
+          SnackBar(
+            content: Text('Order created! $quantity x ${product['name']}'),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
 
   // --- 3. LOGIC POP UP BUAT TOKO (Jika belum punya) ---
- // --- 3. LOGIC POP UP BUAT TOKO (YANG SUDAH DIRAPIKAN) ---
+  // --- 3. LOGIC POP UP BUAT TOKO (YANG SUDAH DIRAPIKAN) ---
   void _showCreateStoreDialog() {
     String storeName = '';
     String block = 'A'; // Default value
@@ -196,7 +218,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               title: const Text(
                 'Create Your Store',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               content: Column(
@@ -205,43 +230,62 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   // --- INPUT STORE NAME ---
                   TextField(
-                    style: const TextStyle(color: Colors.black), // PENTING: Teks jadi Hitam
+                    style: const TextStyle(
+                      color: Colors.black,
+                    ), // PENTING: Teks jadi Hitam
                     onChanged: (val) => storeName = val,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white,
                       hintText: 'Store Name',
                       hintStyle: TextStyle(color: Colors.grey.shade500),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30), // Bulat lonjong
+                        borderRadius: BorderRadius.circular(
+                          30,
+                        ), // Bulat lonjong
                         borderSide: BorderSide.none,
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // --- DROPDOWN LOCATION ---
                   DropdownButtonFormField<String>(
                     value: block,
-                    dropdownColor: Colors.white, // Background menu dropdown putih
-                    style: const TextStyle(color: Colors.black, fontSize: 16), // Teks pilihan Hitam
+                    dropdownColor:
+                        Colors.white, // Background menu dropdown putih
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                    ), // Teks pilihan Hitam
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Colors.grey,
+                    ),
                     items: ['A', 'B', 'C', 'D', 'E'].map((e) {
                       return DropdownMenuItem(
                         value: e,
                         child: Text(
                           'Blok $e',
-                          style: const TextStyle(color: Colors.black), // Teks item Hitam
+                          style: const TextStyle(
+                            color: Colors.black,
+                          ), // Teks item Hitam
                         ),
                       );
                     }).toList(),
@@ -261,7 +305,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -271,11 +318,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () async {
                           if (storeName.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please enter store name')),
+                              const SnackBar(
+                                content: Text('Please enter store name'),
+                              ),
                             );
                             return;
                           }
-                          
+
                           try {
                             // Panggil service
                             await SupabaseService().ensureSellerProfile(
@@ -284,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                             if (mounted) {
                               Navigator.pop(context); // Tutup dialog
-                              Navigator.pushNamed(context, '/seller-dashboard'); 
+                              Navigator.pushNamed(context, '/seller-dashboard');
                             }
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -304,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             );
           },
@@ -334,7 +383,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       ListTile(
                         leading: const Icon(Icons.person, color: Colors.white),
-                        title: const Text('Edit Buyer Profile', style: TextStyle(color: Colors.white)),
+                        title: const Text(
+                          'Edit Buyer Profile',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.pushNamed(
@@ -346,13 +398,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       ListTile(
                         leading: const Icon(Icons.logout, color: Colors.red),
-                        title: const Text('Logout', style: TextStyle(color: Colors.red)),
+                        title: const Text(
+                          'Logout',
+                          style: TextStyle(color: Colors.red),
+                        ),
                         onTap: () async {
                           Navigator.pop(context);
                           await SupabaseService().signOut();
                           if (mounted) {
                             Navigator.pushNamedAndRemoveUntil(
-                                context, '/login', (route) => false);
+                              context,
+                              '/login',
+                              (route) => false,
+                            );
                           }
                         },
                       ),
@@ -381,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Cuma Ikon Lonceng, tanpa merah-merah
         IconButton(
           onPressed: () {
-             // Nanti bisa diisi logika buka halaman notifikasi
+            // Nanti bisa diisi logika buka halaman notifikasi
           },
           icon: const Icon(Icons.notifications_none, color: Colors.white),
         ),
@@ -400,23 +458,26 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _pill('Buyer', userRole == 'buyer', () {
-              setRole('buyer');
+            setRole('buyer');
           }),
           const SizedBox(width: 4),
-          _pill('Seller',  userRole == 'seller', () async {
-             setRole('seller');
+          _pill('Seller', userRole == 'seller', () async {
+            setRole('seller');
             // --- 4. LOGIC CHECK SELLER PROFILE SEBELUM MASUK DASHBOARD ---
             try {
-              final existing = await SupabaseService().getCurrentSellerProfile();
+              final existing = await SupabaseService()
+                  .getCurrentSellerProfile();
               if (existing != null) {
                 // Sudah punya toko, langsung masuk
-                if(mounted) Navigator.pushNamed(context, '/seller-dashboard');
+                if (mounted) Navigator.pushNamed(context, '/seller-dashboard');
               } else {
                 // Belum punya, tampilkan pop up buat toko
                 _showCreateStoreDialog();
               }
             } catch (e) {
-               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Error: $e')));
             }
           }),
         ],
@@ -449,9 +510,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return TextField(
       readOnly: true,
       onTap: () {
-         //ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Search coming soon')));
-         //ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Redirecting to search page...')));
-         Navigator.push(
+        //ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Search coming soon')));
+        //ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Redirecting to search page...')));
+        Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const SearchScreen()),
         );
@@ -479,10 +540,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/seller-profile', arguments: {
-          'seller': seller,
-          'seller_id': seller['id'].toString()
-        });
+        Navigator.pushNamed(
+          context,
+          '/seller-profile',
+          arguments: {'seller': seller, 'seller_id': seller['id'].toString()},
+        );
       },
       child: Container(
         width: 100,
@@ -500,18 +562,34 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Icon(Icons.person, color: Colors.white),
             ),
             const SizedBox(height: 8),
-            Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            Text(
+              displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: isOpen ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(4)
+                color: isOpen
+                    ? Colors.green.withOpacity(0.2)
+                    : Colors.red.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(isOpen ? 'Open' : 'Closed', style: TextStyle(fontSize: 10, color: isOpen ? Colors.green : Colors.red)),
+              child: Text(
+                isOpen ? 'Open' : 'Closed',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isOpen ? Colors.green : Colors.red,
+                ),
+              ),
             ),
-             const SizedBox(height: 4),
-             Text('Blok $block', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            const SizedBox(height: 4),
+            Text(
+              'Blok $block',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
           ],
         ),
       ),
@@ -532,11 +610,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF5F63D9) : const Color(0xFF1C1F26),
+                  color: isSelected
+                      ? const Color(0xFF5F63D9)
+                      : const Color(0xFF1C1F26),
                   shape: BoxShape.circle,
-                  border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
+                  border: isSelected
+                      ? Border.all(color: Colors.white, width: 2)
+                      : null,
                 ),
-                child: Icon(c['icon'] as IconData, color: Colors.white, size: 24),
+                child: Icon(
+                  c['icon'] as IconData,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -559,10 +645,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final seller = product['sellers'] as Map<String, dynamic>?;
     final sellerName = seller?['display_name'] ?? 'Unknown Seller';
     final price = product['price'] ?? 0;
-    
+    final productId = product['id'] as int;
+    final quantity = _quantities[productId] ?? 1;
+
     // --- DUMMY DATA ---
-    const closesIn = "45 min"; 
-    const orderCount = 15; 
+    const closesIn = "45 min";
+    const orderCount = 15;
     // ------------------
 
     return Container(
@@ -578,86 +666,212 @@ class _HomeScreenState extends State<HomeScreen> {
           Stack(
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: Container(
                   height: 140,
                   width: double.infinity,
                   color: Colors.grey.shade800,
-                  child: const Center(child: Icon(Icons.fastfood, size: 50, color: Colors.white24)),
+                  child: const Center(
+                    child: Icon(
+                      Icons.fastfood,
+                      size: 50,
+                      color: Colors.white24,
+                    ),
+                  ),
                 ),
               ),
               Positioned(
                 top: 10,
                 right: 10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF5F63D9),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('Closes in $closesIn', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Closes in $closesIn',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
               Positioned(
                 bottom: 10,
                 right: 10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEDF8F0), 
+                    color: const Color(0xFFEDF8F0),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('$orderCount Orders', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    '$orderCount Orders',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          
+
           // Info Produk
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product['name'] ?? 'Product Name',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                // Product name and seller info
+                Text(
+                  product['name'] ?? 'Product Name',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 14, color: Colors.amber),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        "4.8 | $sellerName",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      Row(
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Rp $price",
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF5F63D9),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Quantity selector dan Order button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Quantity selector
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2D36),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star, size: 14, color: Colors.amber),
-                          const SizedBox(width: 4),
-                          Expanded(
+                          // Tombol minus
+                          InkWell(
+                            onTap: () {
+                              if (quantity > 1) {
+                                setState(() {
+                                  _quantities[productId] = quantity - 1;
+                                });
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: quantity > 1
+                                    ? const Color(0xFF5F63D9)
+                                    : Colors.grey.shade700,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  bottomLeft: Radius.circular(8),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.remove,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          // Tampilkan quantity
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             child: Text(
-                              "4.8 | $sellerName", 
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              overflow: TextOverflow.ellipsis,
+                              '$quantity',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          // Tombol plus
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                _quantities[productId] = quantity + 1;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF5F63D9),
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(8),
+                                  bottomRight: Radius.circular(8),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                size: 18,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Rp $price",
-                         style: const TextStyle(fontSize: 14, color: Color(0xFF5F63D9), fontWeight: FontWeight.bold),
+                    ),
+
+                    // Order button
+                    ElevatedButton(
+                      onPressed: () => _createQuickOrder(product, quantity),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5F63D9),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
                       ),
-                    ],
-                  ),
+                      child: Text(
+                        'Order ($quantity)',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                ElevatedButton(
-                  onPressed: () => _createQuickOrder(product),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5F63D9),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                  ),
-                  child: const Text('Order', style: TextStyle(color: Colors.white)),
-                )
               ],
             ),
           ),
@@ -685,7 +899,7 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           : null,
 
-     body: SingleChildScrollView(
+      body: SingleChildScrollView(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Column(
@@ -695,9 +909,9 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildHeader(),
             const SizedBox(height: 18),
 
-            Center(child: _toggleBuyerSeller()), 
-            // -------------------------------------
+            Center(child: _toggleBuyerSeller()),
 
+            // -------------------------------------
             const SizedBox(height: 18),
             _searchBar(),
             const SizedBox(height: 26),
@@ -705,15 +919,23 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Popular Sellers', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                TextButton(onPressed: (){Navigator.pushNamed(context, '/all-sellers');}, child: const Text('See All')),
+                const Text(
+                  'Popular Sellers',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/all-sellers');
+                  },
+                  child: const Text('See All'),
+                ),
               ],
             ),
-            
+
             // Seller List
             SizedBox(
               height: 130,
-              child: _sellers.isEmpty 
+              child: _sellers.isEmpty
                   ? const Center(child: Text("No sellers"))
                   : ListView.builder(
                       scrollDirection: Axis.horizontal,
@@ -725,43 +947,55 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             // Kategori Filter
             _buildCategories(),
-            
+
             const SizedBox(height: 24),
             // Header Active Purchase Orders
-            const Text('Active Purchase Orders', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Active Purchase Orders',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
-            
+
             // FEED UTAMA
-            if (_isLoadingFeed) 
-              const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+            if (_isLoadingFeed)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
+              )
             else if (_feedProducts.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(color: const Color(0xFF1C1F26), borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1F26),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Column(
                   children: [
-                     const Icon(Icons.search_off, size: 40, color: Colors.grey),
-                     const SizedBox(height: 10),
-                     Text(
-                       _selectedCategory == null 
-                         ? "No active orders available" 
-                         : "No $_selectedCategory orders found", 
-                       style: const TextStyle(color: Colors.grey)
-                     ),
+                    const Icon(Icons.search_off, size: 40, color: Colors.grey),
+                    const SizedBox(height: 10),
+                    Text(
+                      _selectedCategory == null
+                          ? "No active orders available"
+                          : "No $_selectedCategory orders found",
+                      style: const TextStyle(color: Colors.grey),
+                    ),
                   ],
                 ),
               )
             else
               ListView.builder(
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(), 
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: _feedProducts.length > _visibleCount
                     ? _visibleCount + 1
                     : _feedProducts.length,
                 itemBuilder: (context, index) {
                   // Cek apakah ini index terakhir (tempat tombol See More)
-                  if (_feedProducts.length > _visibleCount && index == _visibleCount) {
+                  if (_feedProducts.length > _visibleCount &&
+                      index == _visibleCount) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                       child: Center(
@@ -776,7 +1010,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 12,
+                            ),
                           ),
                           child: const Text(
                             'See More',
@@ -794,8 +1031,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   return _buildBigProductCard(_feedProducts[index]);
                 },
               ),
-              
-             const SizedBox(height: 40),
+
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -841,9 +1078,18 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.white60,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Favorites'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border),
+            label: 'Favorites',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chat',
+          ),
         ],
       ),
     );

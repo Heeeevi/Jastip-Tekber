@@ -92,18 +92,21 @@ class _ChatScreenState extends State<ChatScreen> {
     final p2 = chat['participant_2'] as Map<String, dynamic>?;
     final currentUserId = _svc.getCurrentUser()?.id;
     final other = (chat['participant_1_id'] == currentUserId) ? p2 : p1;
+    final otherId = (chat['participant_1_id'] == currentUserId) 
+        ? chat['participant_2_id']?.toString() 
+        : chat['participant_1_id']?.toString();
     final otherName = other != null ? (other['full_name'] as String? ?? 'User') : 'User';
     final lastMessage = chat['last_message']?.toString() ?? '';
     final time = (chat['last_message_at']?.toString() ?? '').split('T').first;
     return GestureDetector(
       onTap: () {
-        // Buka percakapan nyata dengan conversation_id
+        // Buka percakapan nyata dengan conversation_id DAN recipient_id
         Navigator.pushNamed(
           context,
           '/chat-conversation',
           arguments: {
             'conversation_id': chat['id'].toString(),
-            // 'seller_id' optional; dapat diisi jika perlu arahkan ke seller
+            'recipient_id': otherId, // FIXED: Pass the other participant ID
           },
         );
       },
