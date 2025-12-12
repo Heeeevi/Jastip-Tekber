@@ -829,24 +829,22 @@ class SupabaseService {
         .eq('conversation_id', conversationId);
   }
 
-  /// Cari produk berdasarkan keyword (mencari di kolom 'keywords' ATAU 'category')
-  Future<List<Map<String, dynamic>>> getProductsByKeyword(String tag) async {
+  /// Cari produk berdasarkan Nama, Keyword, atau Kategori
+  Future<List<Map<String, dynamic>>> searchProducts(String query) async {
     try {
       final response = await supabase
           .from('products')
           .select('''
             *,
-            sellers:seller_id(display_name, rating, block)
-          ''') // join seller untuk info toko
-          .or(
-            'keywords.ilike.%$tag%, category.ilike.%$tag%',
-          ) // Cek keyword ATAU category
-          .eq('is_available', true)
+            sellers:seller_id(display_name, rating, block, delivery_time, is_online)
+          ''') 
+          .or('name.ilike.%$query%, category.ilike.%$query%, keywords.ilike.%$query%') // Cek Nama, Kategori, atau Keyword
+          .eq('is_available', true) 
           .order('created_at', ascending: false);
-
+      
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error fetching products by keyword: $e');
+      print('Error searching products: $e');
       return [];
     }
   }
