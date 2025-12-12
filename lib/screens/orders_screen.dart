@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_2/screens/favorites_screen.dart';
+import 'package:flutter_application_2/screens/menu_chat.dart';
 import 'package:flutter_application_2/services/supabase_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'order_detail_screen.dart';
+import 'chat.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -68,6 +70,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
       break;
       case 3:
         // placeholders
+        Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const ChatScreen(), transitionDuration: Duration.zero,
+        ),
+      );
         break;
     }
   }

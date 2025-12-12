@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import '../services/supabase_service.dart';
 import 'search_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,18 +36,39 @@ class _HomeScreenState extends State<HomeScreen> {
     {'icon': Icons.local_bar, 'label': 'Drinks'},
   ];
 
-  @override
+  //simpan role saat user klik
+  void setRole(String role) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_role', role);
+    setState(() => userRole = role);
+  }
+
+  String userRole = 'buyer';
+
+ @override
   void initState() {
     super.initState();
+
+    // Load role buyer/seller
+    loadRole();
+
+    // Load sellers + feed
     _loadData();
 
-    // --- 2. LISTENER SCROLL (Untuk tombol Back to Top) ---
+    // Listener untuk tombol scroll-to-top
     _scrollController.addListener(() {
       if (_scrollController.offset > 300 && !_showScrollButton) {
         setState(() => _showScrollButton = true);
       } else if (_scrollController.offset <= 300 && _showScrollButton) {
         setState(() => _showScrollButton = false);
       }
+    });
+  }
+
+  void loadRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userRole = prefs.getString('user_role') ?? 'buyer';
     });
   }
 
@@ -262,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                             if (mounted) {
                               Navigator.pop(context); // Tutup dialog
-                              Navigator.pushReplacementNamed(context, '/seller-dashboard'); 
+                              Navigator.pushNamed(context, '/seller-dashboard'); 
                             }
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -389,15 +411,18 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _pill('Buyer', true, null),
+          _pill('Buyer', userRole == 'buyer', () {
+              setRole('buyer');
+          }),
           const SizedBox(width: 4),
-          _pill('Seller', false, () async {
+          _pill('Seller',  userRole == 'seller', () async {
+             setRole('seller');
             // --- 4. LOGIC CHECK SELLER PROFILE SEBELUM MASUK DASHBOARD ---
             try {
               final existing = await SupabaseService().getCurrentSellerProfile();
               if (existing != null) {
                 // Sudah punya toko, langsung masuk
-                if(mounted) Navigator.pushReplacementNamed(context, '/seller-dashboard');
+                if(mounted) Navigator.pushNamed(context, '/seller-dashboard');
               } else {
                 // Belum punya, tampilkan pop up buat toko
                 _showCreateStoreDialog();
@@ -437,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen> {
       readOnly: true,
       onTap: () {
          //ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Search coming soon')));
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Redirecting to search page...')));
+         //ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Redirecting to search page...')));
          Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const SearchScreen()),
@@ -788,9 +813,39 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap: (i) {
-           if(i == 1) Navigator.pushReplacementNamed(context, '/orders');
-           // dll..
+        onTap: (i) async {
+          //setState(() => currentIndex = i);
+          final prefs = await SharedPreferences.getInstance();
+          final role = prefs.getString('user_role') ?? 'buyer';
+
+          if (i == 0) {
+            if (role == 'seller') {
+              Navigator.pushNamed(context, '/seller-dashboard');
+            } else {
+              Navigator.pushNamed(context, '/home');
+            }
+          }
+          if (i == 1) {
+            if (role == 'seller') {
+              Navigator.pushNamed(context, '/orders');
+            } else {
+              Navigator.pushNamed(context, '/orders');
+            }
+          }
+          if (i == 2) {
+            if (role == 'seller') {
+              Navigator.pushNamed(context, '/favorites');
+            } else {
+              Navigator.pushNamed(context, '/favorites');
+            }
+          }
+          if (i == 3) {
+            if (role == 'seller') {
+              Navigator.pushNamed(context, '/chat');
+            } else {
+              Navigator.pushNamed(context, '/chat');
+            }
+          }
         },
         backgroundColor: const Color(0xFF14171D),
         type: BottomNavigationBarType.fixed,

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -25,15 +27,24 @@ class _AddItemPageState extends State<AddItemPage> {
   final _svc = SupabaseService();
 
   File? _selectedImage;
+  Uint8List? _webImage;
+
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _webImage = bytes;
+        });
+      } else {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
     }
   }
 
@@ -173,16 +184,77 @@ class _AddItemPageState extends State<AddItemPage> {
                     ),
 
                     // Image Preview
-                    if (_selectedImage != null) ...[
+                    if (kIsWeb && _webImage != null) ...[
                       const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          _selectedImage!,
-                          height: 120,
-                          width: 120,
-                          fit: BoxFit.cover,
-                        ),
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              _webImage!,
+                              height: 120,
+                              width: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+
+                          // Tombol Hapus Gambar
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _webImage = null;
+                                });
+                              },
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                child: const Icon(Icons.close, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else if (!kIsWeb && _selectedImage != null) ...[
+                      const SizedBox(height: 12),
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              _selectedImage!,
+                              height: 120,
+                              width: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+
+                          // Tombol Hapus Gambar
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedImage = null;
+                                });
+                              },
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                child: const Icon(Icons.close, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
 

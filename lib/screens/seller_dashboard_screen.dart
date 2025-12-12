@@ -292,17 +292,18 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
               break;
             case 1:
               // Ke Orders Screen
-              Navigator.pushReplacementNamed(context, '/orders');
+              Navigator.pushNamed(context, '/orders');
               break;
             case 2:
               // Ke Favorites Screen
-              Navigator.pushReplacementNamed(context, '/favorites');
+              Navigator.pushNamed(context, '/favorites');
               break;
             case 3:
               // Placeholder Chat (belum ada screen)
-              ScaffoldMessenger.of(context).showSnackBar(
+              /*ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Chat feature coming soon!')),
-              );
+              );*/
+              Navigator.pushNamed(context, '/chat');
               break;
           }
         },

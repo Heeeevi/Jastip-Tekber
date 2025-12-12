@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'orders_screen.dart';
 import 'favorites_screen.dart';
@@ -19,20 +20,20 @@ class _SearchScreenState extends State<SearchScreen> {
 
   //TAMBAHAN — handler untuk navigator
   void _onBottomTap(int index) {
-    if (index == currentIndex) return;
+    //if (index == currentIndex) return; ini ga dipakai biar navbar homenya bisa di tap ulang
 
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushNamed(context, '/home');
         break;
       case 1:
-        Navigator.pushReplacementNamed(context, '/orders');
+        Navigator.pushNamed(context, '/orders');
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, '/favorites');
+        Navigator.pushNamed(context, '/favorites');
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, '/chat');
+        Navigator.pushNamed(context, '/chat');
         break;
     }
   }
@@ -210,34 +211,16 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 70,
+        backgroundColor: const Color(0xFF14171D),
+        elevation: 0,
+        toolbarHeight: 140,
         automaticallyImplyLeading: false,
-        title: Container(
-          height: 45,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              const Icon(Icons.search),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  style: const TextStyle(color: Colors.black),
-                  cursorColor: Colors.black,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText: "Search seller or food...",
-                    hintStyle: TextStyle(color: Colors.black54),
-                  ),
-                  onChanged: search,
-                ),
-              ),
-            ],
-          ),
+        title: Column(
+          children: [
+            _buildHeader(),                // ⬅ diarahkan ke header sama seperti home
+            const SizedBox(height: 14),
+            _buildSearchBar(),             // ⬅ search bar dipisah agar rapih
+          ],
         ),
       ),
 
@@ -288,6 +271,84 @@ class _SearchScreenState extends State<SearchScreen> {
               icon: Icon(Icons.favorite), label: "Favorites"),
           BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline), label: "Chat"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+  return Container(
+    height: 45,
+    decoration: BoxDecoration(
+      color: Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    child: Row(
+      children: [
+        const Icon(Icons.search, color: Colors.black54),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TextField(
+            controller: _searchController,
+            style: const TextStyle(color: Colors.black),
+            cursorColor: Colors.black,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: "Search seller or food...",
+              hintStyle: TextStyle(color: Colors.black54),
+            ),
+            onChanged: search,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20), // ubah angkanya sesuai selera
+      child: Row(
+        children: [
+          GestureDetector(
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.grey.shade700,
+              child: const Icon(Icons.person, color: Colors.white),
+            ),
+          ),
+
+          const Spacer(),
+
+          Text(
+            'JasTip',
+            style: GoogleFonts.pacifico(fontSize: 28, color: Colors.white),
+          ),
+
+          const Spacer(),
+
+          Stack(
+            children: [
+              const Icon(Icons.notifications_none, color: Colors.white),
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                  child: const Text(
+                    '2',
+                    style: TextStyle(color: Colors.white, fontSize: 8),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            ],
+          ),
         ],
       ),
     );
