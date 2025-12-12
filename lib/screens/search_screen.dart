@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/supabase_service.dart'; 
+import '../services/supabase_service.dart'; // Jangan lupa import service
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -325,7 +325,6 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildHeader() {
-    // --- SAMA SEPERTI KODEMU, CUMA UPDATE NOTIFIKASI BIAR ILANG MERAHNYA ---
     return Padding(
       padding: const EdgeInsets.only(top: 20),
       child: Row(

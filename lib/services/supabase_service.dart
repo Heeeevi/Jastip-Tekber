@@ -24,10 +24,6 @@ class SupabaseService {
         'room_number': roomNumber,
       },
     );
-
-    // Profile akan otomatis dibuat oleh trigger handle_new_user di Supabase
-    // Tidak perlu manual insert karena sudah ada trigger
-
     return response;
   }
 
@@ -70,31 +66,28 @@ class SupabaseService {
   }
 
   /// Update user profile (Buyer)
-  /// Updated to match ProfilePage inputs
   Future<void> updateUserProfile({
     required String userId,
-    String? displayName, // Dari form dikirim sebagai displayName
+    String? displayName,
     String? bio,
     String? phone,
-    String? block, // Dari form dikirim sebagai block
+    String? block,
   }) async {
     final updates = <String, dynamic>{
       'updated_at': DateTime.now().toIso8601String(),
     };
 
-    // MAPPING KE KOLOM DATABASE:
-    if (displayName != null)
-      updates['full_name'] = displayName; // Masuk ke full_name
+    if (displayName != null) updates['full_name'] = displayName;
     if (phone != null) updates['phone'] = phone;
     if (bio != null) updates['bio'] = bio;
-    if (block != null) updates['dom_block'] = block; // Masuk ke dom_block
+    if (block != null) updates['dom_block'] = block;
 
     await supabase.from('profiles').update(updates).eq('id', userId);
   }
 
   // ==================== SELLERS ====================
 
-  /// Fetch all sellers (untuk Popular Sellers)
+  /// Fetch all sellers
   Future<List<Map<String, dynamic>>> fetchSellers({
     int limit = 10,
     bool? isOnline,
@@ -124,6 +117,25 @@ class SupabaseService {
     return data;
   }
 
+  /// Cari seller berdasarkan nama
+  Future<List<Map<String, dynamic>>> searchSellers(String query) async {
+    try {
+      final data = await supabase
+          .from('sellers')
+          .select('''
+            *,
+            profiles!inner(full_name, avatar_url, dom_block)
+          ''')
+          .ilike('display_name', '%$query%')
+          .order('total_orders', ascending: false);
+
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      print('Error searching sellers: $e');
+      return [];
+    }
+  }
+
   /// Create seller profile
   Future<Map<String, dynamic>> createSellerProfile({
     required String userId,
@@ -137,7 +149,7 @@ class SupabaseService {
     final data = await supabase
         .from('sellers')
         .insert({
-          'id': userId, // sellers.id references profiles.id
+          'id': userId,
           'display_name': displayName,
           'block': block,
           'description': description,
@@ -177,7 +189,7 @@ class SupabaseService {
     await supabase.from('sellers').update(updates).eq('id', sellerId);
   }
 
-  /// Stream sellers untuk real-time updates
+  /// Stream sellers
   Stream<List<Map<String, dynamic>>> sellersStream() {
     return supabase
         .from('sellers')
@@ -187,7 +199,7 @@ class SupabaseService {
 
   // ==================== ORDERS ====================
 
-  /// Fetch active orders (untuk Active Purchase Orders)
+  /// Fetch active orders
   Future<List<Map<String, dynamic>>> fetchActiveOrders() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return [];
@@ -205,7 +217,7 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Fetch orders for the current seller filtered by statuses
+  /// Fetch orders for the current seller
   Future<List<Map<String, dynamic>>> fetchSellerOrders({
     List<String>? statuses,
   }) async {
@@ -225,7 +237,7 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Fetch items for an order (join products)
+  /// Fetch items for an order
   Future<List<Map<String, dynamic>>> fetchOrderItems(int orderId) async {
     final data = await supabase
         .from('order_items')
@@ -238,13 +250,12 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Ensure conversation exists between current user and seller (returns conversation map)
+  /// Ensure conversation exists
   Future<Map<String, dynamic>> ensureConversationWithSeller(
     String sellerId,
   ) async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('Not logged in');
-    // Find existing
     final existing = await supabase
         .from('conversations')
         .select()
@@ -253,7 +264,6 @@ class SupabaseService {
         )
         .maybeSingle();
     if (existing != null) return existing;
-    // Create new
     final created = await supabase
         .from('conversations')
         .insert({'participant_1_id': userId, 'participant_2_id': sellerId})
@@ -262,7 +272,7 @@ class SupabaseService {
     return created;
   }
 
-  /// Update order status (seller side)
+  /// Update order status
   Future<void> updateOrderStatus({
     required int orderId,
     required String status,
@@ -270,7 +280,7 @@ class SupabaseService {
     await supabase.from('orders').update({'status': status}).eq('id', orderId);
   }
 
-  /// Count active orders untuk badge
+  /// Count active orders
   Future<int> countActiveOrders() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return 0;
@@ -309,7 +319,6 @@ class SupabaseService {
     try {
       data = await supabase.from('orders').insert(payload).select().single();
     } catch (e) {
-      // Fallback: if server schema doesn't have delivery_time/address yet, retry without them
       final msg = e.toString();
       final maybeSchemaCache =
           msg.contains("Could not find the 'delivery_time' column") ||
@@ -366,7 +375,7 @@ class SupabaseService {
     return item;
   }
 
-  /// Re-order from a previous order: duplicates items under a new order
+  /// Re-order
   Future<Map<String, dynamic>> reorder({
     required int previousOrderId,
     required String sellerId,
@@ -374,7 +383,6 @@ class SupabaseService {
     String? deliveryTime,
     String? notes,
   }) async {
-    // Fetch previous items
     final prevItems = await supabase
         .from('order_items')
         .select('product_id, quantity, price')
@@ -384,13 +392,11 @@ class SupabaseService {
       throw Exception('No items to reorder');
     }
 
-    // Compute total price
     double total = 0;
     for (final it in prevItems) {
       total += (it['price'] as num).toDouble() * (it['quantity'] as int);
     }
 
-    // Create the new order
     final newOrder = await createOrder(
       sellerId: sellerId,
       totalPrice: total,
@@ -399,7 +405,6 @@ class SupabaseService {
       notes: notes,
     );
 
-    // Add items to the new order
     for (final it in prevItems) {
       await addOrderItem(
         orderId: newOrder['id'] as int,
@@ -481,7 +486,7 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Count unread notifications untuk badge
+  /// Count unread notifications
   Future<int> countUnreadNotifications() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return 0;
@@ -531,7 +536,7 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Get products by category (global view for buyers) with seller embed
+  /// Get products by category
   Future<List<Map<String, dynamic>>> getProductsByCategory(
     String category, {
     int limit = 20,
@@ -549,7 +554,7 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Get ALL products from all sellers (for buyer home dashboard)
+  /// Get ALL products
   Future<List<Map<String, dynamic>>> getAllProducts({int limit = 50}) async {
     final data = await supabase
         .from('products')
@@ -594,19 +599,15 @@ class SupabaseService {
 
   // ==================== SELLER HELPERS ====================
 
-  /// Get current user's seller profile (if exists)
+  /// Get current user's seller profile
   Future<Map<String, dynamic>?> getCurrentSellerProfile() async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) return null;
-    final data = await supabase
-        .from('sellers')
-        .select()
-        .eq('id', uid)
-        .maybeSingle();
+    final data = await supabase.from('sellers').select().eq('id', uid).maybeSingle();
     return data;
   }
 
-  /// Ensure current user has a seller profile, create if missing
+  /// Ensure current user has a seller profile
   Future<Map<String, dynamic>> ensureSellerProfile({
     required String displayName,
     String? block,
@@ -625,14 +626,14 @@ class SupabaseService {
     );
   }
 
-  /// Ensure profile row exists (fallback if trigger failed or legacy user)
+  /// Ensure profile row exists
   Future<void> _ensureProfileExists() async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) return;
     try {
       await supabase.rpc('ensure_profile');
     } catch (_) {
-      // ignore if function not deployed yet
+      // ignore
     }
   }
 
@@ -677,7 +678,6 @@ class SupabaseService {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
-    // If no conversation ID provided, find or create conversation
     String finalConversationId = conversationId ?? '';
     if (finalConversationId.isEmpty) {
       final existingConv = await _findConversation(userId, recipientId);
@@ -704,7 +704,6 @@ class SupabaseService {
         .select()
         .single();
 
-    // Update conversation last_message
     await supabase
         .from('conversations')
         .update({
@@ -716,7 +715,6 @@ class SupabaseService {
     return data;
   }
 
-  /// Find existing conversation between two users
   Future<Map<String, dynamic>?> _findConversation(
     String userId1,
     String userId2,
@@ -731,7 +729,6 @@ class SupabaseService {
     return data;
   }
 
-  /// Create new conversation
   Future<Map<String, dynamic>> _createConversation(
     String userId1,
     String userId2,
@@ -744,7 +741,6 @@ class SupabaseService {
     return data;
   }
 
-  /// Fetch messages for a conversation
   Future<List<Map<String, dynamic>>> fetchMessages(int conversationId) async {
     final data = await supabase
         .from('messages')
@@ -759,7 +755,6 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Fetch user conversations
   Future<List<Map<String, dynamic>>> fetchConversations() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return [];
@@ -777,7 +772,6 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  /// Stream messages for real-time chat
   Stream<List<Map<String, dynamic>>> messagesStream(int conversationId) {
     return supabase
         .from('messages')
@@ -786,7 +780,6 @@ class SupabaseService {
         .order('created_at', ascending: true);
   }
 
-  /// Mark messages as read
   Future<void> markMessagesAsRead(int conversationId, String userId) async {
     await supabase
         .from('messages')
@@ -796,7 +789,6 @@ class SupabaseService {
         .eq('is_read', false);
   }
 
-  /// Set typing indicator
   Future<void> setTypingIndicator({
     required int conversationId,
     required bool isTyping,
@@ -819,7 +811,6 @@ class SupabaseService {
     }
   }
 
-  /// Stream typing indicators
   Stream<List<Map<String, dynamic>>> typingIndicatorsStream(
     int conversationId,
   ) {
@@ -829,22 +820,70 @@ class SupabaseService {
         .eq('conversation_id', conversationId);
   }
 
-  /// Cari produk berdasarkan Nama, Keyword, atau Kategori
+  // --- FUNGSI SEARCH CLIENT-SIDE (YANG BARU & FIX ERROR) ---
   Future<List<Map<String, dynamic>>> searchProducts(String query) async {
     try {
-      final response = await supabase
+      if (query.trim().isEmpty) return [];
+
+      // 1. REQUEST PRODUK BERDASARKAN NAMA, KATEGORI, KEYWORD
+      final productsByName = await supabase
           .from('products')
           .select('''
             *,
-            sellers:seller_id(display_name, rating, block, delivery_time, is_online)
-          ''') 
-          .or('name.ilike.%$query%, category.ilike.%$query%, keywords.ilike.%$query%') // Cek Nama, Kategori, atau Keyword
-          .eq('is_available', true) 
-          .order('created_at', ascending: false);
+            sellers(display_name, rating, block, delivery_time, is_online)
+          ''')
+          .or('name.ilike.%$query%, category.ilike.%$query%, keywords.ilike.%$query%')
+          .eq('is_available', true);
+
+      // 2. REQUEST PRODUK BERDASARKAN NAMA TOKO (SELLER)
+      // A. Cari dulu seller mana yang namanya cocok
+      final matchingSellers = await supabase
+          .from('sellers')
+          .select('id')
+          .ilike('display_name', '%$query%');
+
+      List<dynamic> productsBySeller = [];
       
-      return List<Map<String, dynamic>>.from(response);
+      // B. Kalau ada seller yang cocok, ambil produk jualan mereka
+      if (matchingSellers.isNotEmpty) {
+        final sellerIds = matchingSellers.map((s) => s['id']).toList();
+        
+        productsBySeller = await supabase
+            .from('products')
+            .select('''
+              *,
+              sellers(display_name, rating, block, delivery_time, is_online)
+            ''')
+            .inFilter('seller_id', sellerIds) // Ambil produk dari ID seller tsb
+            .eq('is_available', true);
+      }
+
+      // 3. GABUNGKAN HASILNYA
+      final allResults = [...productsByName, ...productsBySeller];
+
+      // 4. HAPUS DUPLIKAT (Filter by ID)
+      final uniqueIds = <int>{};
+      final uniqueList = <Map<String, dynamic>>[];
+
+      for (var item in allResults) {
+        final id = item['id'] as int;
+        if (!uniqueIds.contains(id)) {
+          uniqueIds.add(id);
+          uniqueList.add(Map<String, dynamic>.from(item));
+        }
+      }
+
+      // 5. URUTKAN (Terbaru di atas)
+      uniqueList.sort((a, b) {
+        DateTime dateA = DateTime.parse(a['created_at']);
+        DateTime dateB = DateTime.parse(b['created_at']);
+        return dateB.compareTo(dateA);
+      });
+
+      return uniqueList;
+
     } catch (e) {
-      print('Error searching products: $e');
+      print('Error searching products client-side: $e');
       return [];
     }
   }
