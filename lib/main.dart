@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 
 // --- IMPORT SCREEN UMUM ---
 import 'screens/login_screen.dart';
+import 'screens/profile_page.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/all_sellers_screen.dart';
@@ -13,14 +15,15 @@ import 'screens/search_screen.dart';
 import 'screens/order_status_screen.dart';
 import 'screens/menu_chat.dart';
 import 'screens/chat_conversation_screen.dart';
+import 'cart_provider.dart';
+import 'screens/order_confirmation_screen.dart';
 
-// --- IMPORT DARI LOCAL (FITUR SELLER YANG ANDA BUAT) ---
-import 'screens/create_seller_profile_page.dart';
+// --- IMPORT DARI LOCAL (FITUR SELLER) ---
+import 'screens/profile_page.dart';
 import 'screens/seller_profile_page.dart';
 import 'screens/seller_dashboard_screen.dart';
 
 // --- IMPORT DARI REMOTE (FITUR BUYER DARI GITHUB) ---
-// Pastikan file-file ini ada di folder screens setelah pull
 import 'screens/favorites_screen.dart';
 
 // Global Supabase client getter
@@ -37,7 +40,13 @@ void main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxobmp3aG52YXdxem1vcXdjYWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjE2NTcsImV4cCI6MjA3OTczNzY1N30.q3BAMawFbMUe-v1tM_ZcZaZCmC2-jnNitS0q2JSnZeU',
   );
 
-  runApp(const JasTipApp());
+  // UBAH BAGIAN INI: Bungkus aplikasi dengan Provider
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => CartProvider(),
+      child: const JasTipApp(),
+    ),
+  );
 }
 
 class JasTipApp extends StatelessWidget {
@@ -92,7 +101,7 @@ class JasTipApp extends StatelessWidget {
         ),
       ),
 
-  initialRoute: '/login',
+      initialRoute: '/login',
 
       onGenerateRoute: (settings) {
         // Handle routes dengan parameter
@@ -100,8 +109,8 @@ class JasTipApp extends StatelessWidget {
           final args = settings.arguments as Map<String, dynamic>?;
           final isSeller = args?['isSeller'] ?? false;
           return MaterialPageRoute(
-            builder: (_) => CreateSellerProfilePage(isSeller: isSeller),
-            settings: settings, // Pass settings to preserve arguments
+            builder: (_) => ProfilePage(isSeller: isSeller),
+            settings: settings,
           );
         }
 
@@ -109,7 +118,16 @@ class JasTipApp extends StatelessWidget {
         if (settings.name == '/seller-profile') {
           return MaterialPageRoute(
             builder: (_) => const SellerProfilePage(),
-            settings: settings, // IMPORTANT: Pass settings to preserve arguments!
+            settings: settings,
+          );
+        }
+
+        // Handle order-confirmation route with arguments
+        if (settings.name == '/order-confirmation') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (_) => OrderConfirmationScreen(seller: args['seller']),
+            settings: settings,
           );
         }
 
@@ -117,7 +135,7 @@ class JasTipApp extends StatelessWidget {
         if (settings.name == '/chat-conversation') {
           return MaterialPageRoute(
             builder: (_) => const ChatConversationScreen(),
-            settings: settings, // Pass settings to preserve arguments
+            settings: settings,
           );
         }
 

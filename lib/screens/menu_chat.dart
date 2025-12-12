@@ -174,6 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF14171D),
@@ -197,29 +198,17 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Text('JasTip', style: GoogleFonts.inter(color: Colors.white, fontSize: 18)),
         centerTitle: true,
         actions: [
-          Stack(
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1C1F26),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.notifications_none, size: 20, color: Colors.white),
-                ),
+          // --- BAGIAN INI DIPERBARUI (MERAH-MERAH DIHAPUS) ---
+          IconButton(
+            onPressed: () {},
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1C1F26),
+                shape: BoxShape.circle,
               ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                  child: const Text('2', style: TextStyle(fontSize: 10, color: Colors.white)),
-                ),
-              )
-            ],
+              child: const Icon(Icons.notifications_none, size: 20, color: Colors.white),
+            ),
           ),
           const SizedBox(width: 8),
         ],

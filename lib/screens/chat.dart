@@ -92,7 +92,6 @@ class _DetailChatScreenState extends State<DetailChatScreen> {
           style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
         ),
         centerTitle: true,
-        // actions: [] --> Tombol telpon tetap dihapus sesuai request sebelumnya
       ),
       body: Column(
         children: [

@@ -369,7 +369,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-
         const Spacer(),
         Text(
           'JasTip',
@@ -378,24 +377,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const Spacer(),
 
-        // --- 5. KANAN: NOTIFIKASI ---
-        Stack(
-          children: [
-            const Icon(Icons.notifications_none, color: Colors.white),
-            Positioned(
-              right: 0,
-              top: 0,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
-                child: const Text('2', style: TextStyle(color: Colors.white, fontSize: 8), textAlign: TextAlign.center),
-              ),
-            )
-          ],
+        // --- 5. KANAN: NOTIFIKASI (BERSIH) ---
+        // Cuma Ikon Lonceng, tanpa merah-merah
+        IconButton(
+          onPressed: () {
+             // Nanti bisa diisi logika buka halaman notifikasi
+          },
+          icon: const Icon(Icons.notifications_none, color: Colors.white),
         ),
       ],
     );

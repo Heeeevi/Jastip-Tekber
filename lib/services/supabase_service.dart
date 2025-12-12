@@ -69,24 +69,25 @@ class SupabaseService {
     return data;
   }
 
-  /// Update user profile
+  /// Update user profile (Buyer)
+  /// Updated to match ProfilePage inputs
   Future<void> updateUserProfile({
     required String userId,
-    String? fullName,
+    String? displayName, // Dari form dikirim sebagai displayName
+    String? bio,
     String? phone,
-    String? avatarUrl,
-    String? domBlock,
-    String? roomNumber,
+    String? block, // Dari form dikirim sebagai block
   }) async {
     final updates = <String, dynamic>{
       'updated_at': DateTime.now().toIso8601String(),
     };
 
-    if (fullName != null) updates['full_name'] = fullName;
+    // MAPPING KE KOLOM DATABASE:
+    if (displayName != null)
+      updates['full_name'] = displayName; // Masuk ke full_name
     if (phone != null) updates['phone'] = phone;
-    if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
-    if (domBlock != null) updates['dom_block'] = domBlock;
-    if (roomNumber != null) updates['room_number'] = roomNumber;
+    if (bio != null) updates['bio'] = bio;
+    if (block != null) updates['dom_block'] = block; // Masuk ke dom_block
 
     await supabase.from('profiles').update(updates).eq('id', userId);
   }
@@ -205,13 +206,18 @@ class SupabaseService {
   }
 
   /// Fetch orders for the current seller filtered by statuses
-  Future<List<Map<String, dynamic>>> fetchSellerOrders({List<String>? statuses}) async {
+  Future<List<Map<String, dynamic>>> fetchSellerOrders({
+    List<String>? statuses,
+  }) async {
     final sellerId = supabase.auth.currentUser?.id;
     if (sellerId == null) return [];
-    var builder = supabase.from('orders').select('''
+    var builder = supabase
+        .from('orders')
+        .select('''
         *,
         buyer:profiles!orders_buyer_id_fkey(full_name, dom_block, room_number)
-      ''').eq('seller_id', sellerId);
+      ''')
+        .eq('seller_id', sellerId);
     if (statuses != null && statuses.isNotEmpty) {
       builder = builder.inFilter('status', statuses);
     }
@@ -233,30 +239,34 @@ class SupabaseService {
   }
 
   /// Ensure conversation exists between current user and seller (returns conversation map)
-  Future<Map<String, dynamic>> ensureConversationWithSeller(String sellerId) async {
+  Future<Map<String, dynamic>> ensureConversationWithSeller(
+    String sellerId,
+  ) async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('Not logged in');
     // Find existing
     final existing = await supabase
         .from('conversations')
         .select()
-        .or('and(participant_1_id.eq.$userId,participant_2_id.eq.$sellerId),and(participant_1_id.eq.$sellerId,participant_2_id.eq.$userId)')
+        .or(
+          'and(participant_1_id.eq.$userId,participant_2_id.eq.$sellerId),and(participant_1_id.eq.$sellerId,participant_2_id.eq.$userId)',
+        )
         .maybeSingle();
     if (existing != null) return existing;
     // Create new
     final created = await supabase
         .from('conversations')
-        .insert({
-          'participant_1_id': userId,
-          'participant_2_id': sellerId,
-        })
+        .insert({'participant_1_id': userId, 'participant_2_id': sellerId})
         .select()
         .single();
     return created;
   }
 
   /// Update order status (seller side)
-  Future<void> updateOrderStatus({required int orderId, required String status}) async {
+  Future<void> updateOrderStatus({
+    required int orderId,
+    required String status,
+  }) async {
     await supabase.from('orders').update({'status': status}).eq('id', orderId);
   }
 
@@ -301,7 +311,9 @@ class SupabaseService {
     } catch (e) {
       // Fallback: if server schema doesn't have delivery_time/address yet, retry without them
       final msg = e.toString();
-      final maybeSchemaCache = msg.contains("Could not find the 'delivery_time' column") || msg.contains('schema cache');
+      final maybeSchemaCache =
+          msg.contains("Could not find the 'delivery_time' column") ||
+          msg.contains('schema cache');
       if (maybeSchemaCache) {
         payload.remove('delivery_time');
         payload.remove('delivery_address');
@@ -315,7 +327,9 @@ class SupabaseService {
   }
 
   /// Fetch current user's active orders filtered by a seller
-  Future<List<Map<String, dynamic>>> fetchActiveOrdersBySeller(String sellerId) async {
+  Future<List<Map<String, dynamic>>> fetchActiveOrdersBySeller(
+    String sellerId,
+  ) async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return [];
     final data = await supabase
@@ -518,7 +532,10 @@ class SupabaseService {
   }
 
   /// Get products by category (global view for buyers) with seller embed
-  Future<List<Map<String, dynamic>>> getProductsByCategory(String category,{int limit = 20}) async {
+  Future<List<Map<String, dynamic>>> getProductsByCategory(
+    String category, {
+    int limit = 20,
+  }) async {
     final data = await supabase
         .from('products')
         .select('''
@@ -581,12 +598,21 @@ class SupabaseService {
   Future<Map<String, dynamic>?> getCurrentSellerProfile() async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) return null;
-    final data = await supabase.from('sellers').select().eq('id', uid).maybeSingle();
+    final data = await supabase
+        .from('sellers')
+        .select()
+        .eq('id', uid)
+        .maybeSingle();
     return data;
   }
 
   /// Ensure current user has a seller profile, create if missing
-  Future<Map<String, dynamic>> ensureSellerProfile({required String displayName, String? block, String? description, String? deliveryTime}) async {
+  Future<Map<String, dynamic>> ensureSellerProfile({
+    required String displayName,
+    String? block,
+    String? description,
+    String? deliveryTime,
+  }) async {
     await _ensureProfileExists();
     final existing = await getCurrentSellerProfile();
     if (existing != null) return existing;
@@ -803,7 +829,7 @@ class SupabaseService {
         .eq('conversation_id', conversationId);
   }
 
-/// Cari produk berdasarkan keyword (mencari di kolom 'keywords' ATAU 'category')
+  /// Cari produk berdasarkan keyword (mencari di kolom 'keywords' ATAU 'category')
   Future<List<Map<String, dynamic>>> getProductsByKeyword(String tag) async {
     try {
       final response = await supabase
@@ -812,15 +838,16 @@ class SupabaseService {
             *,
             sellers:seller_id(display_name, rating, block)
           ''') // join seller untuk info toko
-          .or('keywords.ilike.%$tag%, category.ilike.%$tag%') // Cek keyword ATAU category
-          .eq('is_available', true) 
+          .or(
+            'keywords.ilike.%$tag%, category.ilike.%$tag%',
+          ) // Cek keyword ATAU category
+          .eq('is_available', true)
           .order('created_at', ascending: false);
-      
+
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('Error fetching products by keyword: $e');
       return [];
     }
   }
-
 }
