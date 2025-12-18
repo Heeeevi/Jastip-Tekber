@@ -1,7 +1,6 @@
-# JASTIP 
+# JASTIP
 
 > **Aplikasi Jasa Titip Mahasiswa Asrama ITS**
-> Dibangun menggunakan **Flutter**
 
 ---
 
@@ -38,6 +37,31 @@ Melalui JasTip, proses pemesanan menjadi lebih **terorganisir, efisien, dan tran
 * Login pengguna (*Sign In*)
 * Perpindahan role antara Buyer dan Jastiper
 * Sistem chat *real-time*
+
+---
+
+## Tech Stack
+
+Aplikasi **JasTip** dikembangkan menggunakan teknologi berikut:
+
+### Frontend
+
+* **Flutter** : Framework utama untuk membangun aplikasi mobile lintas platform (Android).
+* **Dart** : Bahasa pemrograman yang digunakan dalam pengembangan aplikasi Flutter.
+
+### Backend (Backend-as-a-Service)
+
+* **Supabase** : Digunakan sebagai backend utama yang menyediakan:
+
+  * Authentication (Sign Up, Sign In)
+  * Database **PostgreSQL** untuk penyimpanan data pengguna, menu, pesanan, dan chat
+  * Realtime Database untuk pembaruan status pesanan dan fitur chat
+  * Storage untuk penyimpanan gambar (menu, avatar pengguna)
+
+### Tools Pendukung
+
+* **Git & GitHub** : Version control dan kolaborasi pengembangan
+* **Android Studio** : Emulator dan debugging aplikasi
 
 ---
 
@@ -123,4 +147,4 @@ build/                         # Output hasil build (auto-generated)
 
 ---
 
-README ini disediakan untuk membantu proses instalasi, menjalankan aplikasi, serta memahami struktur project **JasTip (Jasa Titip Asrama ITS)**.
+README ini disediakan untuk membantu proses instalasi, menjalankan aplikasi, serta memahami struktur project **JasTip**.
