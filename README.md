@@ -1,10 +1,15 @@
-# JASTIP
+# JASTIP 
+
+> **Aplikasi Jasa Titip Mahasiswa Asrama ITS**
+> Dibangun menggunakan **Flutter**
+
+---
 
 ## Deskripsi Proyek
 
-JasTip adalah aplikasi mobile berbasis **Flutter** yang dikembangkan untuk memfasilitasi layanan jasa titip (jastip) bagi mahasiswa penghuni Asrama ITS. Aplikasi ini menggantikan proses pemesanan manual melalui grup WhatsApp menjadi sistem digital yang lebih **terstruktur, efisien, dan transparan**.
+**JasTip** adalah aplikasi mobile berbasis **Flutter** yang dikembangkan untuk memfasilitasi layanan jasa titip (jastip) **bagi mahasiswa penghuni Asrama ITS**. Aplikasi ini dirancang sebagai solusi digital atas proses pemesanan konvensional yang sebelumnya dilakukan melalui grup WhatsApp, yang cenderung tidak terstruktur dan rawan miskomunikasi.
 
-Melalui aplikasi ini, buyer dapat mencari PO aktif, melakukan pemesanan, serta memantau status pesanan secara real-time. Di sisi lain, jastiper (seller) dapat mengelola PO, menu, dan pesanan secara sistematis tanpa pencatatan manual.
+Melalui JasTip, proses pemesanan menjadi lebih **terorganisir, efisien, dan transparan**. Buyer dapat dengan mudah menemukan PO (Pre-Order) yang aktif, melakukan pemesanan, serta memantau status pesanan secara *real-time*. Sementara itu, jastiper (seller) dapat mengelola PO, menu, dan pesanan secara sistematis tanpa perlu pencatatan manual.
 
 ---
 
@@ -15,30 +20,30 @@ Melalui aplikasi ini, buyer dapat mencari PO aktif, melakukan pemesanan, serta m
 * Melihat daftar jastip (PO) yang sedang aktif
 * Mencari jastip berdasarkan menu, seller, atau kata kunci
 * Melakukan pemesanan secara terstruktur (pilih menu, catatan, checkout)
-* Melihat status pesanan secara real-time
+* Melihat status pesanan secara *real-time*
 * Membatalkan pesanan selama masih menunggu persetujuan seller
 * Chat langsung dengan jastiper
 
 ### Fitur untuk Jastiper (Seller)
 
-* Mengaktifkan dan menonaktifkan PO (Online / Offline)
+* Mengaktifkan dan menonaktifkan PO (*Online / Offline*)
 * Melihat dan mengelola pesanan yang masuk
-* Mengubah status pesanan (New, Preparing, Completed)
+* Mengubah status pesanan (*New, Preparing, Completed*)
 * Menambah dan mengelola menu jastip
 * Membatalkan pesanan dengan alasan
 
 ### Fitur Umum
 
-* Registrasi akun (Sign Up)
-* Login pengguna (Sign In)
+* Registrasi akun (*Sign Up*)
+* Login pengguna (*Sign In*)
 * Perpindahan role antara Buyer dan Jastiper
-* Sistem chat real-time
+* Sistem chat *real-time*
 
 ---
 
 ## Cara Instalasi
 
-Pastikan perangkat sudah memenuhi prasyarat berikut:
+Pastikan perangkat telah memenuhi prasyarat berikut:
 
 * Flutter SDK
 * Android Studio / Emulator atau perangkat Android
@@ -56,14 +61,15 @@ flutter pub get
 
 ## Cara Menjalankan Aplikasi
 
-Jalankan aplikasi menggunakan perintah berikut:
+Jalankan aplikasi dengan perintah berikut:
 
 ```bash
 flutter run
 ```
 
-Pastikan emulator atau perangkat Android sudah terhubung sebelum menjalankan perintah di atas.
+> Pastikan emulator atau perangkat Android sudah terhubung sebelum menjalankan perintah di atas.
 
+---
 
 ## Struktur Folder
 
@@ -98,7 +104,7 @@ lib/
 │   └── supabase_service.dart
 ```
 
-Folder penting lainnya:
+### Folder Penting Lainnya
 
 ```
 assets/                        # Asset statis (gambar, ikon)
@@ -113,8 +119,8 @@ supabase_sql/                  # Script SQL & migrasi database
 build/                         # Output hasil build (auto-generated)
 ```
 
-> Catatan: Fokus utama pengembangan aplikasi berada pada folder `lib/screens` dan `lib/services`, karena seluruh logika tampilan dan integrasi backend didefinisikan di dalam folder tersebut.
+> **Catatan:** Fokus utama pengembangan aplikasi berada pada folder `lib/screens` dan `lib/services`, karena seluruh logika tampilan dan integrasi backend didefinisikan di dalam folder tersebut.
 
 ---
 
-README ini disediakan untuk membantu proses instalasi, menjalankan aplikasi, serta memahami struktur project JasTip Asrama ITS.
+README ini disediakan untuk membantu proses instalasi, menjalankan aplikasi, serta memahami struktur project **JasTip (Jasa Titip Asrama ITS)**.
