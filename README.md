@@ -1,8 +1,8 @@
-# JasTip Asrama ITS
+# JASTIP
 
 ## Deskripsi Proyek
 
-JasTip Asrama ITS adalah aplikasi mobile berbasis **Flutter** yang dikembangkan untuk memfasilitasi layanan jasa titip (jastip) bagi mahasiswa penghuni Asrama ITS. Aplikasi ini menggantikan proses pemesanan manual melalui grup WhatsApp menjadi sistem digital yang lebih **terstruktur, efisien, dan transparan**.
+JasTip adalah aplikasi mobile berbasis **Flutter** yang dikembangkan untuk memfasilitasi layanan jasa titip (jastip) bagi mahasiswa penghuni Asrama ITS. Aplikasi ini menggantikan proses pemesanan manual melalui grup WhatsApp menjadi sistem digital yang lebih **terstruktur, efisien, dan transparan**.
 
 Melalui aplikasi ini, buyer dapat mencari PO aktif, melakukan pemesanan, serta memantau status pesanan secara real-time. Di sisi lain, jastiper (seller) dapat mengelola PO, menu, dan pesanan secara sistematis tanpa pencatatan manual.
 
@@ -35,6 +35,34 @@ flutter run
 ```
 
 Pastikan emulator atau perangkat Android sudah terhubung sebelum menjalankan perintah di atas.
+
+---
+
+## Fitur Aplikasi
+
+### Fitur untuk Buyer
+
+* Melihat daftar jastip (PO) yang sedang aktif
+* Mencari jastip berdasarkan menu, seller, atau kata kunci
+* Melakukan pemesanan secara terstruktur (pilih menu, catatan, checkout)
+* Melihat status pesanan secara real-time
+* Membatalkan pesanan selama masih menunggu persetujuan seller
+* Chat langsung dengan jastiper
+
+### Fitur untuk Jastiper (Seller)
+
+* Mengaktifkan dan menonaktifkan PO (Online / Offline)
+* Melihat dan mengelola pesanan yang masuk
+* Mengubah status pesanan (New, Preparing, Completed)
+* Menambah dan mengelola menu jastip
+* Membatalkan pesanan dengan alasan
+
+### Fitur Umum
+
+* Registrasi akun (Sign Up)
+* Login pengguna (Sign In)
+* Perpindahan role antara Buyer dan Jastiper
+* Sistem chat real-time
 
 ---
 
